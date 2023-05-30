@@ -1,0 +1,1436 @@
+---
+title: "Heart Transplant 14-Day Interval Data, Death in 6 Weeks"
+output:
+  html_document:
+    toc: true
+    df_print: paged
+authors: Kevin Zhang, Kevin Lazenby, and William Parker
+---
+ 
+<!-- 1. Set up original modified dataset (Line 31) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 145) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 477) -->
+<!-- 4. Set up remaining clinical variables (Line 706) -->
+<!-- 5. Create intervals (Line 802) -->
+<!-- 6. Add memory variables (Line 1027) -->
+<!-- 7. Death in 6 weeks (Line 1170) -->
+<!-- 8. Impute variables (Line 1205) -->
+<!-- 9. Generate new clinical variables (Line 1382) -->
+
+
+
+```{r setup, include=F, warning=F, echo=F, message=F, comment=NA}
+rm(list=ls()); invisible(gc())
+if (!require('pacman')) {install.packages('pacman')}
+library(pacman)
+pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr)
+knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
+```
+
+
+# 1. Set up original modified dataset
+The starting dataset (*status_changes_pubsaf2303*) is from https://github.com/kevinlazenby/heart_data_pipeline. <br>
+This dataset is checked against the most recent SRTR code in the later sections. As of writing, this was 2023 Q1 data.
+
+
+```{r, warning=F, comment=NA, message=F}
+df <- read.csv('./status_changes_pubsaf2303.csv')
+df_raw <- df
+
+
+## Patients who were listed from 2019 to 2022 
+df2 <- subset(df, df$t_start == '0' & as.Date(df$unique_date) >= '2019-01-01' & as.Date(df$unique_date) <= '2022-12-31')
+postpolicy_id <- unique(df2$PX_ID)
+df <- df[which(df$PX_ID %in% postpolicy_id), ]
+
+
+
+## Select relevant variables
+clinical_vars <- c('CAN_AGE_IN_MONTHS_AT_LISTING', 'CAN_DGN',
+                'CAN_DIAB_TY', 'CAN_DIAL','CAN_PERIPH_VASC')
+
+labs_vars <- c('sodium', 'creatinine', 'HrSevFailBun', 'albumin', 'AST',
+               'arterial_lactate', 'HrSevFailInr', 'bilirubin', 'HrSevFailBun', 'BNP',
+               'VadLdhLevels')
+
+hemodynamic_vars <- c('systolicBP', 'diastolicBP', 'resting_HR',
+                      'central_venous_pressure', 'cardiac_output', 'PCWP', 'PASP', 'PADP', 'HemoHemoglobin')
+
+treatment_vars <- c(grep(names(df), pattern='ExtIno|_dose$|^InoSin|^InoMul|Iabp', value=T),
+                    'EcmoWithHemo', 'EcmoWithoutHemo',
+                    'ExtMcsdDobutamine', 'ExtMcsdDopamine',
+                    'ExtMcsdEpinephrine', 'ExtMcsdMilrinone', 'CANHX_TAH',
+                    'BivadPlacement', 'CAN_VAD_TY', 'CAN_VAD1')
+
+
+
+df <- df[ ,which(colnames(df) %in% c('PX_ID', 'JustId', 
+                                     'unique_event', 'unique_date','t_start', 't_stop',
+                                     'RequestedCandStatCd', 'status_criteria', 'Exception', 
+                                     clinical_vars, labs_vars, hemodynamic_vars, treatment_vars))]
+
+colnames(df) <- c('PX_ID', 'JustId', 'events', 'date', 't_start', 't_stop', 
+                  'systolicBP', 'PCWP', 'central_venous_pressure', 'cardiac_output', 'arterial_lactate', 'AST',
+                  'creatinine', 'bilirubin', 'albumin', 'sodium', 'BNP', 'heart_rate', 
+                  'diastolicBP', 'PASP', 'PADP', 'hemoglobin', 'LDH', 'BUN',
+                  'INR', 'diagnosis', 'VAD', 'VAD_brand', 'diabetes', 'dialysis', 
+                  'age_m', 'peripheral_vascular','status_criteria', 'status', 'exception', 'ecmo_hemo',
+                  'ecmo_without_hemo', 'bivad', 'iabp_hemo', 'iabp_cardiacindex', 'iabp_without_hemo', 'InoSingle',
+                  
+                  'InoMultiple', 'InoSinDobutamine', 'InoSinMilrinone', 
+                  'InoSinEpinephrine', 'InoMulDobutamine', 'InoMulMilrinone',
+                  
+                  'InoMulEpinephrine', 'InoMulDopamine', 'ExtInoSingleDose', 
+                  'ExtInoMultiDose', 'ExtInoSinDobutamine', 'ExtInoSinMilrinone', 
+                  
+                  'ExtInoSinEpinephrine', 'ExtInoMulDobutamine', 'ExtInoMulMilrinone', 
+                  'ExtInoMulEpinephrine', 'ExtInoMulDopamine', 'ExtMcsdDobutamine',
+                  
+                  'ExtMcsdDopamine', 'ExtMcsdEpinephrine', 'ExtMcsdMilrinone', 
+                  'ExtInotropeDobutamine', 'ExtInotropeMilrinone', 'ExtInotropeEpinephrine', 
+                  
+                  'ExtInotropeDopamine', 'TAH',
+                  'dobutamine_dose', 'milrinone_dose', 'dopamine_dose', 'epinephrine_dose')
+rownames(df) <- seq(1:nrow(df))
+df$date <- NULL
+
+
+
+## TAH is completely missing and removed
+## table(df$TAH, useNA='a')
+df <- df %>% select(-TAH)
+```
+
+
+### Add transplant indicator
+```{r, warning=F, comment=NA, message=F}
+df$transplant <- 0
+df$transplant[which(grepl(pattern = 'REC_TX_DT', x = df$events))] <- 1
+```
+
+
+### Censor all observations after transplant
+```{r, warning=F, comment=NA, message=F}
+## A transplant counter
+df <- df %>% group_by(PX_ID) %>%
+  mutate(transplant = cumsum(cumsum(transplant)))
+
+
+df %>% 
+  filter(transplant > 0) %>%
+  select(PX_ID, events, t_start, t_stop, transplant) %>%
+  head(10)
+
+df <- subset(df, df$transplant <= 1)
+```
+
+
+### Modify transplant to ever/max transplant per patient to prevent dropping in later rows
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% group_by(PX_ID) %>%
+  mutate(transplant = max(transplant))
+
+
+paste0('Number of Patients: ', length(unique(df$PX_ID)))
+paste0('Number Transplanted: ', length(unique(df$PX_ID[df$transplant == 1])))
+paste0('Percent Transplanted: ', round(100 * (length(unique(df$PX_ID[df$transplant == 1])) / length(unique(df$PX_ID))), 2))
+
+rm(df2); invisible(gc())
+```
+
+
+---------------------------------
+
+
+# 2. Merge with status justification datasets and create variables
+```{r, warning=F, comment=NA, message=F}
+## Merge is on JustId
+df$JustId <- trimws(df$JustId)
+
+
+## Read in datasets
+df_just <- haven::read_sas('./JustFormHR.sas7bdat')
+df_just1 <- haven::read_sas('./JustFormHRStat1.sas7bdat')
+df_just2 <- haven::read_sas('./JustFormHRStat2.sas7bdat')
+df_just3 <- haven::read_sas('./JustFormHRStat3.sas7bdat')
+df_just4 <- haven::read_sas('./JustFormHRStat4.sas7bdat')
+
+
+## Status 1 justification
+df_just1 <- df_just1[ ,c('JustId', 'EcmoWithHemo', 'EcmoWithoutHemo',
+                         'EcmoCapWedgePressure', 'EcmoCardiacIndex',
+                         'EcmoSystolicBloodPressure', 'EcmoWithoutHemoCprDt', 'EcmoWithoutHemoSbp',
+                         'EcmoWithoutHemoArtLac', 'EcmoWithoutHemoAst', 'EcmoWithoutHemoAlt', 'VentricularEpisode',
+                         'CriteriaBivadSupport', 'CriteriaEcmoSupport')]
+df_just1$JustId <- trimws(df_just1$JustId)
+df_just1 <- expss::drop_all_labels(df_just1)
+df <- merge(df, df_just1, by = 'JustId', all.x = T, all.y = F, suffixes = c('.x', '.y'), no.dups = T)
+
+
+## Status 2 justification
+df_just2 <- df_just2[ ,c('JustId', 'IabpWithHemo', 'IabpWithoutHemo', 'IabpCapWedgePressure', 'IabpCardiacIndex',
+                         'IabpSystolicBloodPressure', 'IabpWithoutHemoCprDt', 'IabpWithoutHemoSbp',
+                         'IabpWithoutHemoArtLac', 'IabpWithoutHemoAst', 'IabpWithoutHemoAlt',
+                         'CriteriaLvadSupport', 'CriteriaMcsdMalfunction', 'CriteriaDurableDevSupport',
+                         'CriteriaVentEpisode', 'CriteriaMcsdEndovasSupp', 'CriteriaIabpSupport')]
+df_just2$JustId <- trimws(df_just2$JustId)
+df_just2 <- expss::drop_all_labels(df_just2)
+df <- merge(df, df_just2, by = 'JustId', all.x = T, all.y = F, suffixes = c('.x', '.y'), no.dups = T)
+
+
+## Status 3 justification
+df_just3 <- df_just3[ ,c('JustId', grep(names(df_just3), pattern = 'Rhf', value=T),
+                         'CriteriaVaEcmoSupport', 'CriteriaLvadSupport', 'CriteriaLvadDiscSupport', 
+                         'CriteriaPercuSupport', 'CriteriaMcsdWithPump',
+                         'CriteriaMcsdWithHemo', 'CriteriaMcsdMucosalBleed', 'CriteriaMcsdWithAI',
+                         'CriteriaMcsdInfection', 'CriteriaInotropeSupport', 'CriteriaIabpSupport',
+                         
+                         'InoInotropeSupport','InoInvasiveCatheter', 'InoHemodynamicMonitoring', 
+                         'InoCapWedgePressure', 'InoCardiacIndex', 'InoSysBloodPressure',
+                         
+                         'ExtInoSinDobutamine','ExtInoSinMilrinone', 'ExtInoSinEpinephrine', 
+                         'ExtInoMulDobutamine', 'ExtInoMulMilrinone', 'ExtInoMulEpinephrine', 'ExtInoMulDopamine',
+                         
+                         'InoSinDobutamine', 'InoSinMilrinone', 'InoSinEpinephrine', 
+                         'InoMulDobutamine', 'InoMulMilrinone', 'InoMulEpinephrine', 'InoMulDopamine',
+                         
+                         'ExtMcsdDobutamine', 'ExtMcsdDopamine', 'ExtMcsdEpinephrine', 'ExtMcsdMilrinone')]
+df_just3$JustId <- trimws(df_just3$JustId)
+df_just3 <- expss::drop_all_labels(df_just3)
+
+df_just3$CriteriaIabpSupport3 <- df_just3$CriteriaIabpSupport
+df_just3$CriteriaIabpSupport <- NULL
+df_just3$CriteriaLvadSupport3 <- df_just3$CriteriaLvadSupport
+df_just3$CriteriaLvadSupport <- NULL
+df <- merge(df, df_just3, by = 'JustId', all.x = T, all.y = F, suffixes = c('.x', '.y'), no.dups = T)
+
+
+## Status 4 justification
+df_just4 <- df_just4[ ,c('JustId', 'InotropeDobutamine', 'InotropeDopamine',
+                         'InotropeEpinephrine', 'InotropeMilrinone', 
+                         'CriteriaIschemicHeart', 'CriteriaInotropeSupport', 'InotropeCardiacIndex', 'InotropePcwp',
+                         
+                         'ExtInotropeDobutamine', 'ExtInotropeMilrinone', 'ExtInotropeEpinephrine', 'ExtInotropeDopamine')]
+df_just4$JustId <- trimws(df_just4$JustId)
+df_just4 <- expss::drop_all_labels(df_just4)
+
+df_just4$CriteriaInotropeSupport4 <- df_just4$CriteriaInotropeSupport
+df_just4$CriteriaInotropeSupport <- NULL
+df <- merge(df, df_just4, by = 'JustId', all.x = T, all.y = F, suffixes = c('.x', '.y'), no.dups = T)
+
+
+rm(df_just, df_just1, df_just2, df_just3, df_just4)
+```
+
+
+
+## Inotrope variables
+These lab variables are categorical, with cutoffs based on the 'High' cutoffs in the data dictionary. \newline
+
+Categories are 'Not High' and 'High'. None includes 0 or no data. The cutoffs for 'High' (inclusive) when numeric: \newline
+
+* 3 for dopamine
+* 7.5 for dobutamine
+* 0.5 for milrinone
+* 0.02 for epinephrine
+
+
+### Dopamine
+```{r, warning=F, comment=NA, message=F}
+df <- df %>%
+  mutate(dopamine = case_when(
+    
+    as.numeric(dopamine_dose) >= 3 | !is.na(McsdWithRhfDopamine) | as.numeric(InotropeDopamine) >= 3 |
+    !is.na(ExtMcsdDopamine.y) | as.numeric(ExtInotropeDopamine.y) >= 3 | 
+    ExtInoMulDopamine.y == 1 | InoMulDopamine.y == 1 ~ 'High',
+    
+    TRUE ~ 'Not High')) 
+
+
+df %>%
+  filter(dopamine == 'High') %>%
+  select(PX_ID, dopamine, dopamine_dose, McsdWithRhfDopamine, InotropeDopamine, 
+         ExtMcsdDopamine.x, ExtMcsdDopamine.y, 
+         ExtInotropeDopamine.x, ExtInotropeDopamine.y,
+         ExtInoMulDopamine.x, ExtInoMulDopamine.y,
+         InoMulDopamine.x, InoMulDopamine.y)
+```
+
+
+### Dobutamine
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% 
+  mutate(dobutamine = case_when(
+    
+    as.numeric(dobutamine_dose) >= 7.5 | !is.na(McsdWithRhfDobutamine) | as.numeric(InotropeDobutamine) >= 7.5 |
+    !is.na(ExtMcsdDobutamine.y) | as.numeric(ExtInotropeDobutamine.y) >= 7.5 | 
+    ExtInoMulDobutamine.y == 1 | ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 | InoMulDobutamine.y == 1 ~ 'High',
+    
+    TRUE ~ 'Not High'))
+
+
+df %>%
+  filter(dobutamine == 'High') %>%
+  select(PX_ID, dobutamine, dobutamine_dose, McsdWithRhfDobutamine, InotropeDobutamine, 
+         ExtMcsdDobutamine.x, ExtMcsdDobutamine.y, 
+         ExtInotropeDobutamine.x, ExtInotropeDobutamine.y,
+         ExtInoMulDobutamine.x, ExtInoMulDobutamine.y,
+         ExtInoSinDobutamine.x, ExtInoSinDobutamine.y,
+         InoSinDobutamine.x, InoSinDobutamine.y,
+         InoMulDobutamine.x, InoMulDobutamine.y)
+```
+
+
+### Milrinone
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% 
+  mutate(milrinone = case_when(
+    
+    as.numeric(milrinone_dose) >= 0.5 | !is.na(McsdWithRhfMilrinone) | as.numeric(InotropeMilrinone) >= 0.5 |
+    !is.na(ExtMcsdMilrinone.y) | as.numeric(ExtInotropeMilrinone.y) >= 0.5 | 
+    ExtInoMulMilrinone.y == 1 | ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 | InoMulMilrinone.y == 1 ~ 'High',
+    
+    TRUE ~ 'Not High'))
+
+
+df %>%
+  filter(milrinone == 'High') %>%
+  select(PX_ID, milrinone, milrinone_dose, McsdWithRhfMilrinone, InotropeMilrinone, 
+         ExtMcsdMilrinone.x, ExtMcsdMilrinone.y, 
+         ExtInotropeMilrinone.x, ExtInotropeMilrinone.y,
+         ExtInoMulMilrinone.x, ExtInoMulMilrinone.y,
+         ExtInoSinMilrinone.x, ExtInoSinMilrinone.y,
+         InoSinMilrinone.x, InoSinMilrinone.y,
+         InoMulMilrinone.x, InoMulMilrinone.y)
+```
+
+
+### Epinephrine
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% 
+  mutate(epinephrine = case_when(
+    
+    as.numeric(epinephrine_dose) >= 0.02 | !is.na(McsdWithRhfEpinephrine) | as.numeric(InotropeEpinephrine) >= 0.02 |
+    !is.na(ExtMcsdEpinephrine.y) | as.numeric(ExtInotropeEpinephrine.y) >= 0.02 | 
+    ExtInoMulEpinephrine.y == 1 | ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 | InoMulEpinephrine.y == 1 ~ 'High',
+    
+    TRUE ~ 'Not High'))
+
+
+df %>%
+  filter(epinephrine == 'High') %>%
+  select(PX_ID, epinephrine, epinephrine_dose, McsdWithRhfEpinephrine, InotropeEpinephrine, 
+         ExtMcsdEpinephrine.x, ExtMcsdEpinephrine.y, 
+         ExtInotropeEpinephrine.x, ExtInotropeEpinephrine.y,
+         ExtInoMulEpinephrine.x, ExtInoMulEpinephrine.y,
+         ExtInoSinEpinephrine.x, ExtInoSinEpinephrine.y,
+         InoSinEpinephrine.x, InoSinEpinephrine.y,
+         InoMulEpinephrine.x, InoMulEpinephrine.y)
+```
+
+
+```{r, warning=F, comment=NA, message=F}
+df <- df %>%
+  select(-c(
+    
+    ExtInoSingleDose, ExtInoMultiDose, 
+  
+    dopamine_dose, McsdWithRhfDopamineDt, InotropeDopamine, 
+    ExtMcsdDopamine.x, ExtMcsdDopamine.y, 
+    ExtInotropeDopamine.x, ExtInotropeDopamine.y,
+    ExtInoMulDopamine.x, ExtInoMulDopamine.y,
+    InoMulDopamine.x, InoMulDopamine.y,
+         
+    dobutamine_dose, McsdWithRhfDobutamineDt, InotropeDobutamine, 
+    ExtMcsdDobutamine.x, ExtMcsdDobutamine.y, 
+    ExtInotropeDobutamine.x, ExtInotropeDobutamine.y,
+    ExtInoMulDobutamine.x, ExtInoMulDobutamine.y,
+    ExtInoSinDobutamine.x, ExtInoSinDobutamine.y,
+    InoSinDobutamine.x, InoSinDobutamine.y,
+    InoMulDobutamine.x, InoMulDobutamine.y,
+    
+    milrinone_dose, McsdWithRhfEpinephrineDt, InotropeMilrinone, 
+    ExtMcsdMilrinone.x, ExtMcsdMilrinone.y, 
+    ExtInotropeMilrinone.x, ExtInotropeMilrinone.y,
+    ExtInoMulMilrinone.x, ExtInoMulMilrinone.y,
+    ExtInoSinMilrinone.x, ExtInoSinMilrinone.y,
+    InoSinMilrinone.x, InoSinMilrinone.y,
+    InoMulMilrinone.x, InoMulMilrinone.y,
+    
+    epinephrine_dose, McsdWithRhfMilrinoneDt, InotropeEpinephrine, 
+    ExtMcsdEpinephrine.x, ExtMcsdEpinephrine.y, 
+    ExtInotropeEpinephrine.x, ExtInotropeEpinephrine.y,
+    ExtInoMulEpinephrine.x, ExtInoMulEpinephrine.y,
+    ExtInoSinEpinephrine.x, ExtInoSinEpinephrine.y,
+    InoSinEpinephrine.x, InoSinEpinephrine.y,
+    InoMulEpinephrine.x, InoMulEpinephrine.y))
+```
+
+
+
+## Other treatment variables
+```{r, warning=F, comment=NA, message=F}
+df <- df %>%
+  mutate(
+    life_arrhythmia = case_when(VentricularEpisode == 1 ~ 1, TRUE ~ 0),
+    
+    angina = case_when(CriteriaIschemicHeart == 1 ~ 1, TRUE ~ 0),
+    
+    BiVAD_no_discharge = case_when(CriteriaBivadSupport == 1 ~ 1, TRUE ~ 0),
+    
+    temp_surg_LVAD = case_when(CriteriaLvadSupport == 1 ~ 1, TRUE ~ 0),
+    
+    v_tach_fib = case_when(CriteriaVentEpisode == 1 ~ 1, TRUE ~ 0),
+    
+    perc_LVAD = case_when(CriteriaMcsdEndovasSupp == 1 ~ 1, TRUE ~ 0),
+    
+    ###################################
+    
+    other_durable_MCSD = case_when(CriteriaDurableDevSupport == 1 ~ 1, TRUE ~ 0),
+    
+    MCSD_malfunction = case_when(CriteriaMcsdMalfunction == 1 ~ 1, TRUE ~ 0),
+    
+    MCSD_hemolysis = case_when(CriteriaMcsdWithHemo == 1  ~ 1, TRUE ~ 0),
+    
+    MCSD_device_infx = case_when(CriteriaMcsdInfection == 1 ~ 1, TRUE ~ 0),
+    
+    MCSD_bleed = case_when(CriteriaMcsdMucosalBleed == 1 ~ 1, TRUE ~ 0),
+    
+    MCSD_aortic_insf = case_when(CriteriaMcsdWithAI == 1 ~ 1, TRUE ~ 0),
+    
+    MCSD_rhf = case_when(
+      CriteriaMcsdWithRhf == 1 | !is.na(McsdWithRhfDobutamine) | !is.na(McsdWithRhfDopamine) |
+      !is.na(McsdWithRhfMilrinone) | !is.na(McsdWithRhfEpinephrine) | 
+      (!is.na(McsdWithRhfNitricOxide) & McsdWithRhfNitricOxide > 0) | 
+      (!is.na(McsdWithRhfProstacyclin) & McsdWithRhfProstacyclin > 0) |   
+      !is.na(McsdWithRhfPcwp) | !is.na(McsdWithRhfVenPressure) ~ 1,
+      TRUE ~ 0),
+    
+    MCSD_complication = case_when(
+      MCSD_malfunction == 1 | MCSD_hemolysis == 1 | MCSD_device_infx == 1 | MCSD_bleed == 1 | 
+      MCSD_aortic_insf == 1 | MCSD_rhf == 1 | CriteriaMcsdWithAI == 1 | CriteriaMcsdWithPump == 1 ~ 1,
+      TRUE ~ 0),
+    
+    ###################################
+    
+    IV_inotropes = case_when(
+      CriteriaInotropeSupport == 1 | CriteriaInotropeSupport4 == 1 | 
+      InoSingle == 1 | InoMultiple == 1 |  InoInotropeSupport == 1 |
+      InoInvasiveCatheter == 1 | InoHemodynamicMonitoring == 1 | 
+      !is.na(InoCardiacIndex) | !is.na(InoCapWedgePressure) | !is.na(InoSysBloodPressure) |
+      !is.na(InotropePcwp) | !is.na(InotropeCardiacIndex) |
+      dopamine == 'High' | dobutamine == 'High' | epinephrine == 'High' | milrinone == 'High' ~ 1,
+      
+      TRUE ~ 0),
+    
+    IABP = case_when(
+      CriteriaIabpSupport == 1 | CriteriaIabpSupport3 == 1 | IabpWithHemo == 1  | IabpWithoutHemo == 1 |
+      !is.na(IabpCapWedgePressure) | !is.na(IabpCardiacIndex) | !is.na(IabpSystolicBloodPressure) |
+      !is.na(IabpWithoutHemoAlt) | !is.na(IabpWithoutHemoArtLac) | !is.na(IabpWithoutHemoAst) |
+      !is.na(IabpWithoutHemoCprDt) | !is.na(IabpWithoutHemoSbp) ~ 1,
+
+      TRUE ~ 0),
+    
+    ECMO = case_when(
+      CriteriaEcmoSupport == 1 | CriteriaVaEcmoSupport == 1 | EcmoWithHemo == 1 | EcmoWithoutHemo == 1 | 
+      !is.na(EcmoCapWedgePressure) | !is.na(EcmoCardiacIndex) | !is.na(EcmoSystolicBloodPressure) |
+      !is.na(EcmoWithoutHemoAlt) | !is.na(EcmoWithoutHemoArtLac) | !is.na(EcmoWithoutHemoAst) |
+      !is.na(EcmoWithoutHemoCprDt) | !is.na(EcmoWithoutHemoCprDt) | !is.na(EcmoWithoutHemoSbp) ~ 1,
+      
+      TRUE ~ 0
+    )
+    
+    
+    ) %>%
+  
+  
+  select(-c(VentricularEpisode, CriteriaIschemicHeart,
+            CriteriaMcsdMalfunction, CriteriaVentEpisode,
+            CriteriaMcsdWithHemo, CriteriaMcsdInfection, CriteriaMcsdMucosalBleed, CriteriaMcsdWithAI, 
+            CriteriaMcsdWithPump,
+            
+            CriteriaMcsdWithRhf, McsdWithRhfDobutamine, McsdWithRhfDopamine, McsdWithRhfMilrinone,
+            McsdWithRhfEpinephrine, McsdWithRhfNitricOxide, McsdWithRhfNitricOxideDt, 
+            McsdWithRhfProstacyclin, McsdWithRhfProstacyclinDt,
+            McsdWithRhfPcwp, McsdWithRhfPcwpDt, McsdWithRhfVenPressure, McsdWithRhfVenPressureDt,
+            
+            CriteriaInotropeSupport, CriteriaInotropeSupport4, InoSingle, InoMultiple, InoInotropeSupport,
+            InoInvasiveCatheter, InoHemodynamicMonitoring,  InoCardiacIndex, InoCapWedgePressure, InoSysBloodPressure,
+            InotropePcwp, InotropeCardiacIndex,
+            
+            CriteriaIabpSupport, CriteriaIabpSupport3, IabpWithHemo, IabpWithoutHemo,
+            IabpCapWedgePressure, IabpCardiacIndex, IabpSystolicBloodPressure, IabpWithoutHemoAlt, 
+            IabpWithoutHemoArtLac, IabpWithoutHemoAst, IabpWithoutHemoCprDt, IabpWithoutHemoSbp,
+            
+            CriteriaEcmoSupport, CriteriaVaEcmoSupport, EcmoWithHemo, EcmoWithoutHemo,
+            EcmoCapWedgePressure, EcmoCardiacIndex, EcmoSystolicBloodPressure, EcmoWithoutHemoAlt, 
+            EcmoWithoutHemoArtLac, EcmoWithoutHemoAst, EcmoWithoutHemoCprDt, EcmoWithoutHemoCprDt, EcmoWithoutHemoSbp,
+            
+            
+            ecmo_hemo, ecmo_without_hemo, iabp_hemo, iabp_without_hemo, iabp_cardiacindex))
+```
+
+
+---------------------------------
+
+
+# 3. Merge with cand_thor dataset and create time-related variables
+```{r, warning=F, comment=NA, message=F}
+df_candthor <- haven::read_sas('./cand_thor.sas7bdat')
+df_candthor <- df_candthor[which(df_candthor$PX_ID %in% postpolicy_id), ]
+df_candthor <- expss::drop_all_labels(df_candthor)
+df_candthor_raw <- df_candthor
+
+
+
+## Obtain relevant variables
+df_candthor <- df_candthor[,c('PX_ID', 'CAN_LISTING_DT', 'PERS_SSA_DEATH_DT',
+                              'PERS_OPTN_DEATH_DT', 'CAN_REM_DT', 'CAN_DEATH_DT',
+                              'CAN_REM_CD', 'REC_TX_DT', 'CAN_LISTING_CTR_ID',
+                              'CAN_LAST_ACT_STAT_DT', 
+                              
+                              'CAN_VAD_TY', 'CAN_VAD1', 
+                              'CAN_AGE_IN_MONTHS_AT_LISTING', 'CAN_DGN', 'CAN_DIAB_TY', 'CAN_DIAL', 'CAN_INIT_STAT')]
+
+
+
+df_candthor <- df_candthor %>% 
+  
+  
+  ## Rename variables
+  mutate(
+    transplant_cand_thor = case_when(!is.na(REC_TX_DT) | CAN_REM_CD == '4' ~ 1,
+      TRUE ~ 0),
+    
+    CenterId = CAN_LISTING_CTR_ID,
+    removal_code_cand_thor = CAN_REM_CD,
+    start_date = as.Date(CAN_LISTING_DT),
+    transplant_date = as.Date(REC_TX_DT),
+    removal_date = as.Date(CAN_REM_DT),
+    last_active_date = as.Date(CAN_LAST_ACT_STAT_DT),
+    death_date = as.Date(CAN_DEATH_DT),
+    death_date_max = pmax(CAN_DEATH_DT, PERS_SSA_DEATH_DT, PERS_OPTN_DEATH_DT, na.rm=T)) %>%
+  
+  mutate(transplant_time = ifelse(!is.na(transplant_date), 
+                                  as.numeric(transplant_date - start_date, units='days'), 0)) %>%
+  mutate(death_time = ifelse(!is.na(death_date_max), as.numeric(death_date_max - start_date, units='days'), 0)) %>%
+  mutate(removal_time = as.numeric(removal_date - start_date, units='days')) %>%
+  
+  
+  ## Extra time after last active date in days (can be 0); cannot be transplanted or dead at removal
+  mutate(
+    extra_time = case_when(
+      transplant_cand_thor != '1' & CAN_REM_CD != '8'  ~ 
+        as.numeric(death_time - removal_time, units = 'days'),
+      TRUE ~ 0)) %>%
+  
+  select(PX_ID, CenterId, start_date, transplant_cand_thor, transplant_time, death_time, death_date_max, 
+         extra_time, transplant_date, removal_date, removal_time,
+         removal_code_cand_thor, death_date, death_date_max, CAN_VAD_TY, CAN_VAD1, 
+         CAN_AGE_IN_MONTHS_AT_LISTING, CAN_DGN, CAN_DIAB_TY, CAN_DIAL, CAN_INIT_STAT, CAN_LISTING_DT)
+```
+
+
+### Merge with df
+```{r, warning=F, comment=NA, message=F}
+df <- merge(df, df_candthor, all.x = T, all.y = F, by = 'PX_ID')
+df <- df[order(df$PX_ID, df$t_start), ]
+df <- df %>% relocate(CenterId, .after = PX_ID)
+```
+
+
+
+### Update with transplant observations that were present in candthor, last group, and start date variables
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% group_by(PX_ID) %>%
+  mutate(
+    transplant = case_when(
+      transplant == '0' & transplant_cand_thor == '1' ~ 1,
+      TRUE ~ transplant)) %>%
+  
+  mutate(
+    ## Recreate max transplant, as before
+    transplant = max(transplant),    
+    
+    last_group = case_when(
+      row_number() == n() ~ 1,
+      TRUE ~ 0)) %>%
+  
+  select(-c(transplant_cand_thor))
+```
+
+
+### Confirm that all transplants from candthor were found
+```{r, warning=F, comment=NA, message=F}
+transplant_ids <- unique(df$PX_ID[df$transplant == 1])
+transplant_ids_candthor <- unique(df_candthor$PX_ID[df_candthor$transplant_cand_thor == 1])
+
+paste0('Difference Between Candthor and Dataset: ', setdiff(transplant_ids_candthor, transplant_ids))
+rm(transplant_ids_candthor)
+
+paste0('Number of Patients: ', length(unique(df$PX_ID)))
+paste0('Number Transplanted: ', length(unique(df$PX_ID[df$transplant == 1])))
+paste0('Percent Transplanted: ', round(100 * (length(unique(df$PX_ID[df$transplant == 1])) / length(unique(df$PX_ID))), 2))
+```
+
+
+
+### Update with candthor's transplant time, death time, or removal time 
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% relocate(last_group, .after = t_stop)
+
+df$t_stop[df$last_group == '1' & df$transplant == '0' & !is.na(df$removal_time) & df$t_stop != df$removal_time] <-
+  as.numeric(df$removal_time[df$last_group == '1' & 
+                               df$transplant == '0' & 
+                               !is.na(df$removal_time) & df$t_stop != df$removal_time])
+
+### We only replace with death date if extra time is 0
+df$t_stop[df$last_group == '1' & !is.na(df$death_time) & df$extra_time == 0 & df$death_time > df$t_stop] <-
+  as.numeric(df$death_time[df$last_group == '1' & !is.na(df$death_time) & df$extra_time == 0 & 
+                             df$death_time > df$t_stop])
+
+### If both transplanted and died, transplant takes priority
+df$t_stop[df$last_group == '1' & df$transplant == '1' & df$transplant_time != df$t_stop] <-
+  as.numeric(df$transplant_time[df$last_group == '1' & df$transplant == '1' & df$transplant_time != df$t_stop])
+
+```
+
+
+
+### Sample PX_IDs showing the change; now correct start and stop times accordingly
+```{r, warning=F, comment=NA, message=F}
+### Extra time exists; we need 'phantom' intervals
+df %>% filter(PX_ID == '1484214' | PX_ID == '1504645') %>% select(PX_ID, t_start, t_stop, last_group, removal_time, death_time, extra_time, transplant, transplant_time)
+```
+
+```{r, warning=F, comment=NA, message=F}
+### Extra time is greater than 42; we need to cut off the intervals
+df %>% filter(PX_ID == '1252414') %>% select(PX_ID, t_start, t_stop, last_group, removal_time, death_time, extra_time, transplant, transplant_time)
+```
+
+```{r, warning=F, comment=NA, message=F}
+df$interval_cut_flag <- 0
+df$interval_cut_flag[df$last_group == '1' & df$transplant == '0' &
+                       (df$extra_time == 0 | df$extra_time > 42) &
+                       (df$t_start >= df$removal_time)] <- 1
+df <- df %>% filter(interval_cut_flag == 0) %>% select(-interval_cut_flag)
+
+
+## Recreate last group
+df <- df %>% group_by(PX_ID) %>%  
+  mutate(
+    last_group = case_when(
+      row_number() == n() ~ 1,
+      TRUE ~ 0)) %>%
+  
+  mutate(
+    t_stop = case_when(
+      last_group == '1' & transplant == '0' & (extra_time == 0 | extra_time > 42) & 
+        (t_stop > removal_time) & !is.na(removal_time) ~ removal_time,
+      TRUE ~ t_stop)) %>%
+  
+  filter(last_group == 0 | 
+        (last_group == '1' & t_start <= removal_time & transplant == '0') | 
+        (last_group == '1' & transplant == '1'))
+
+
+df %>% filter(PX_ID == '1252414' | PX_ID == '1484214' | PX_ID == '1504645') %>% 
+  select(PX_ID, t_start, t_stop, last_group, removal_time, death_time, extra_time, transplant, transplant_time)
+```
+
+
+
+### Cut off extra rows past transplant date
+```{r, warning=F, comment=NA, message=F}
+df %>% filter(PX_ID == '1256398' | PX_ID == '1265188') %>%
+  select(PX_ID, t_start, t_stop, transplant, transplant_time)
+```
+
+
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% 
+  filter(transplant == '0' | (transplant == '1' & t_start <= transplant_time)) %>%
+  
+  mutate(t_stop = case_when(
+    transplant == '1' & t_stop > transplant_time ~ transplant_time,
+    TRUE ~ t_stop))
+
+
+df %>% filter(PX_ID == '1256398' | PX_ID == '1265188') %>%
+  select(PX_ID, t_start, t_stop, transplant, transplant_time)
+```
+
+
+
+### Preliminary death indicator
+```{r, warning=F, comment=NA, message=F}
+df <- df %>% 
+  mutate(death_flag = case_when(
+    (!is.na(death_date_max) | removal_code_cand_thor == '8') & transplant == '0' & extra_time <= 42 ~ '1' ,
+    TRUE ~ '0'))
+```
+
+
+### Confirm that all deaths from candthor were found
+```{r, warning=F, comment=NA, message=F}
+death_ids <- unique(df$PX_ID[df$death_flag == 1])
+
+
+candthor_death_ids <- df_candthor_raw %>%
+  select(PX_ID, CAN_REM_CD, CAN_REM_DT, CAN_DEATH_DT, PERS_OPTN_DEATH_DT, PERS_SSA_DEATH_DT, REC_TX_DT) %>%
+  filter(CAN_REM_CD == '8' | !is.na(CAN_DEATH_DT) | !is.na(PERS_OPTN_DEATH_DT) | !is.na(PERS_SSA_DEATH_DT)) %>%
+  
+  mutate(death_dt = pmin(CAN_DEATH_DT, PERS_OPTN_DEATH_DT, PERS_SSA_DEATH_DT, na.rm=T)) %>%
+  mutate(time_since_rm = difftime(death_dt, CAN_REM_DT, units='days')) %>%
+  
+  filter(time_since_rm <= 42) %>%
+  filter(is.na(REC_TX_DT))
+candthor_death_ids <- unique(candthor_death_ids$PX_ID)
+
+
+paste0('Difference Between Candthor and Dataset: ', setdiff(candthor_death_ids, death_ids))
+rm(candthor_death_ids)
+```
+
+
+### Examine the single case: dropped in our dataset since no time available (same day)
+```{r, warning=F, comment=NA, message=F}
+df_candthor_raw %>% filter(PX_ID == '1288472') %>%
+  select(PX_ID, CAN_LISTING_DT, CAN_DEATH_DT, PERS_SSA_DEATH_DT, PERS_OPTN_DEATH_DT, REC_TX_DT, CAN_REM_CD)
+```
+
+
+---------------------------------
+
+
+# 4. Set up remaining clinical variables
+```{r, warning=F, comment=NA, message=F}
+## Age in years
+df$age <- df$CAN_AGE_IN_MONTHS_AT_LISTING / 12
+
+
+## Initial status at listing
+# 2010 = Status 1A, 2020 = Status 1B, 2030 = (Old) Status 2
+df$status <- recode_factor(df$status,
+                           '1110' = '1', '1120' = '2', '1130' = '3',
+                           '1140' = '4', '1150' = '5', '1160' = '6',
+                           '2110' = '1', '2120' = '2', '2130' = '3',
+                           '2140' = '4', '2150' = '5', '2160' = '6',
+                           
+                           '1999' = 'inactive', 
+                           '2010' = NA_character_, '2020' = NA_character_, '2030' = '6',
+                           '2999' = 'inactive')
+df$status_initial <- recode_factor(df$CAN_INIT_STAT,
+                           '1110' = '1', '1120' = '2', '1130' = '3',
+                           '1140' = '4', '1150' = '5', '1160' = '6',
+                           '2110' = '1', '2120' = '2', '2130' = '3',
+                           '2140' = '4', '2150' = '5', '2160' = '6',
+                           
+                           '1999' = 'inactive', 
+                           '2010' = NA_character_, '2020' = NA_character_, '2030' = '6',
+                           '2999' = 'inactive')
+
+
+###################################
+
+
+## Diagnosis, diabetes, and dialysis
+df$diagnosis <- as.numeric(df$CAN_DGN)
+df <- df %>% mutate(
+  diagnosis = case_when(
+    diagnosis >= 1000 & diagnosis <= 1049 & diagnosis != 1007 ~ 'Dilated_CM',
+    diagnosis >= 1050 & diagnosis <= 1099 & diagnosis != 1051 ~ 'Restricted',
+    diagnosis == 1051 ~ 'Amyloid',
+    diagnosis >= 1101 & diagnosis <= 1106 ~ 'Re-Transplant',
+    diagnosis == 1201 ~ 'Hypertrophic',
+    diagnosis == 1202 ~ 'Valvular',
+    diagnosis == 1203 | (diagnosis >= 1205 & diagnosis <= 1209) ~ 'Congenital', 
+    diagnosis == 1200 | diagnosis == 1007 ~ 'Ischemic',
+    TRUE ~ 'Other'), 
+  
+   diabetes = case_when(
+    CAN_DIAB_TY == 1 ~ '0',
+    CAN_DIAB_TY == 2 | CAN_DIAB_TY == 3 | CAN_DIAB_TY == 4 | CAN_DIAB_TY == 5 ~ '1',
+    TRUE ~ NA_character_),
+  
+  
+  dialysis = case_when(
+    CAN_DIAL == 1 ~ '0',
+    CAN_DIAL == 2 | CAN_DIAL == 3 | CAN_DIAL == 4 | CAN_DIAL == 5 | CAN_DIAL == 999 ~ '1',
+    TRUE ~ NA_character_)
+  )
+
+
+###################################
+
+
+## LVAD, RVAD, BiVAD
+df <- df %>% mutate(
+  LVAD = case_when(
+    CriteriaLvadSupport == 1 | CriteriaLvadSupport3 == 1 | CriteriaLvadDiscSupport == 1 |
+    CriteriaMcsdEndovasSupp == 1 | CriteriaPercuSupport == 1 | 
+    (CAN_VAD_TY == 2) |
+    (CAN_VAD1 %in% c('205', '236', '313', '330', '206', '208', '314', '210', '319', '216', '305', '217',
+                    '306', '223', '312', '224', '316', '230', '324', '231', '325', '232', '326', '233', '327')) ~ 1,
+    
+    TRUE ~ 0),
+  
+  
+  RVAD = case_when(
+    CriteriaDurableDevSupport == 1 | CriteriaMcsdEndovasSupp == 1 | CriteriaPercuSupport == 1 | 
+    (CAN_VAD_TY == 3) |
+    (CAN_VAD_TY != 1 & !is.na(CAN_VAD_TY) & 
+       !(CAN_VAD1 %in% c('205', '236', '313', '330', '206', '208', '314', '210', '319', '216', '305', '217',
+                    '306', '223', '312', '224', '316', '230', '324', '231', '325', '232', '326', '233', '327'))) ~ 1,
+  TRUE ~ 0),
+  
+  
+  BiVAD = case_when(
+    CriteriaMcsdEndovasSupp == 1 | CriteriaPercuSupport == 1 | CriteriaBivadSupport == 1 |
+    (LVAD == 1 & RVAD == 1) |
+    bivad == 1 ~ 1,
+ TRUE ~ 0))
+
+
+
+df <- df %>% select(-c(JustId, events,
+                       start_date, transplant_time, death_time, death_date_max, transplant_date,
+                       removal_date, removal_time, removal_code_cand_thor, death_date, extra_time,
+                       
+                       age_m, CAN_AGE_IN_MONTHS_AT_LISTING, CAN_INIT_STAT, CAN_DGN, CAN_DIAB_TY, CAN_DIAL,
+                       
+                       CriteriaLvadSupport, CriteriaLvadSupport3, CriteriaLvadDiscSupport, CriteriaBivadSupport, 
+                       CriteriaMcsdEndovasSupp, CriteriaPercuSupport, CriteriaDurableDevSupport, 
+                       CAN_VAD_TY, CAN_VAD1, VAD, VAD_brand, bivad))
+```
+
+
+---------------------------------
+
+
+# 5. Create intervals
+### Adjust time variables
+```{r, warning=F, comment=NA, message=F}
+### Reconstruct transplant, remove preliminary death flag since we have death ids
+df <- df %>% group_by(PX_ID) %>%
+  mutate(transplant = max(transplant)) %>%
+  select(-c(death_flag))
+```
+
+
+### Deal with inactive statuses
+```{r, warning=F, comment=NA, message=F}
+df$status[df$status == 'inactive'] <- NA_character_
+
+df <- df %>% 
+  group_by(PX_ID) %>%
+  fill(status) %>%
+  mutate(status = as.factor(status),
+         time = t_stop - t_start)
+```
+
+
+### Create 14-day intervals and interval numbers
+```{r, warning=F, comment=NA, message=F}
+duplicate_counts <- ceiling(df$time / 14)
+duplicate_counts[duplicate_counts == 0] <- 1
+row_reps <- rep(1:nrow(df), duplicate_counts)
+df_intervals <- df[row_reps, ]
+
+
+
+df_intervals <- df_intervals %>% group_by(PX_ID) %>%
+  mutate(
+    interval = row_number(),
+    interval_start = 14 * (interval - 1),
+    interval_stop = 14 * interval,
+    max_time = max(t_stop)) 
+```
+
+
+### Find extra intervals and fill in previous row with data
+```{r, warning=F, comment=NA, message=F}
+for(i in nrow(df_intervals):2) {
+  if(df_intervals$PX_ID[i] == df_intervals$PX_ID[i-1] & df_intervals$interval_start[i] > df_intervals$max_time[i]) {
+    
+    df_intervals$systolicBP[i] <- df_intervals$systolicBP[i-1]
+    df_intervals$PCWP[i] <- df_intervals$PCWP[i-1]
+    df_intervals$central_venous_pressure[i] <- df_intervals$central_venous_pressure[i-1]
+    df_intervals$cardiac_output[i] <- df_intervals$cardiac_output[i-1]
+    
+    df_intervals$arterial_lactate[i] <- df_intervals$arterial_lactate[i-1]
+    df_intervals$AST[i] <- df_intervals$AST[i-1]
+    df_intervals$creatinine[i] <- df_intervals$creatinine[i-1]
+    df_intervals$bilirubin[i] <- df_intervals$bilirubin[i-1]
+    df_intervals$albumin[i] <- df_intervals$albumin[i-1]
+    
+    df_intervals$sodium[i] <- df_intervals$sodium[i-1]
+    df_intervals$BNP[i] <- df_intervals$BNP[i-1]
+    df_intervals$heart_rate[i] <- df_intervals$heart_rate[i-1]
+    df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i-1]
+    df_intervals$PASP[i] <- df_intervals$PASP[i-1]
+    
+    df_intervals$PADP[i] <- df_intervals$PADP[i-1]
+    df_intervals$hemoglobin[i] <- df_intervals$hemoglobin[i-1]
+    df_intervals$LDH[i] <- df_intervals$LDH[i-1]
+    df_intervals$BUN[i] <- df_intervals$BUN[i-1]
+    df_intervals$INR[i] <- df_intervals$INR[i-1]
+
+    df_intervals$diagnosis[i] <- df_intervals$diagnosis[i-1]
+    df_intervals$diabetes[i] <- df_intervals$diabetes[i-1]
+    df_intervals$dialysis[i] <- df_intervals$dialysis[i-1]
+    df_intervals$peripheral_vascular[i] <- df_intervals$peripheral_vascular[i-1]
+    df_intervals$status_criteria[i] <- df_intervals$status_criteria[i-1]
+    
+    df_intervals$status[i] <- df_intervals$status[i-1]
+    df_intervals$status_initial[i] <- df_intervals$status_initial[i-1]
+    df_intervals$exception[i] <- df_intervals$exception[i-1]
+    df_intervals$death_flag[i] <- df_intervals$death_flag[i-1]
+    df_intervals$last_group[i] <- df_intervals$last_group[i-1]
+    
+    df_intervals$dobutamine[i] <- df_intervals$dobutamine[i-1]
+    df_intervals$dopamine[i] <- df_intervals$dopamine[i-1]
+    df_intervals$epinephrine[i] <- df_intervals$epinephrine[i-1]
+    df_intervals$milrinone[i] <- df_intervals$milrinone[i-1]
+    df_intervals$IV_inotropes[i] <- df_intervals$IV_inotropes[i-1]
+    
+    df_intervals$IABP[i] <- df_intervals$IABP[i-1]
+    df_intervals$ECMO[i] <- df_intervals$ECMO[i-1]
+    df_intervals$BiVAD[i] <- df_intervals$BiVAD[i-1]
+    df_intervals$LVAD[i] <- df_intervals$LVAD[i-1]
+    df_intervals$RVAD[i] <- df_intervals$RVAD[i-1]
+
+    df_intervals$MSCD_complication[i] <- df_intervals$MSCD_complication[i-1]
+    df_intervals$age[i] <- df_intervals$age[i-1]
+    df_intervals$life_arrhythmia[i] <- df_intervals$life_arrhythmia[i-1]
+    
+    df_intervals$BiVAD_no_discharge[i] <- df_intervals$BiVAD_no_discharge[i-1]
+    df_intervals$temp_surg_LVAD[i] <- df_intervals$temp_surg_LVAD[i-1]
+    df_intervals$other_durable_MCSD[i] <- df_intervals$other_durable_MCSD[i-1]
+    df_intervals$MCSD_malfunction[i] <- df_intervals$MCSD_malfunction[i-1]
+    df_intervals$v_tach_fib[i] <- df_intervals$v_tach_fib[i-1]
+    df_intervals$perc_LVAD[i] <- df_intervals$perc_LVAD[i-1]
+    df_intervals$MCSD_hemolysis[i] <- df_intervals$MCSD_hemolysis[i-1]
+    df_intervals$MCSD_rhf[i] <- df_intervals$MCSD_rhf[i-1]
+    df_intervals$MCSD_device_infx[i] <- df_intervals$MCSD_device_infx[i-1]
+    df_intervals$MCSD_bleed[i] <- df_intervals$MCSD_bleed[i-1]
+    df_intervals$MCSD_aortic_insf[i] <- df_intervals$MCSD_aortic_insf[i-1]
+    df_intervals$angina[i] <- df_intervals$angina[i-1]
+    
+  }
+}
+
+## Ignore 0-day intervals
+df_intervals <- subset(df_intervals, df_intervals$interval_start <= df_intervals$max_time)
+
+
+
+rm(duplicate_counts, row_reps); invisible(gc())
+
+
+
+### Reassign last group flags
+df_intervals <- df_intervals %>% group_by(PX_ID) %>%
+  mutate(
+    last_group = case_when(
+      row_number() == n() ~ 1,
+      TRUE ~ 0)) %>%
+  select(-c(max_time))
+```
+
+
+
+### Check changes; must check if changes in next row, since a row can be as little as 1 day- check up to 14 rows after
+```{r, warning=F, comment=NA, message=F}
+for(j in 1:14) {
+  for(i in 1:(nrow(df_intervals)-j)) {
+    if(df_intervals$interval_start[i] <= df_intervals$t_start[i+j] & 
+       df_intervals$interval_stop[i] >= df_intervals$t_stop[i+j] &
+       df_intervals$PX_ID[i] == df_intervals$PX_ID[i+j]) {
+      
+      df_intervals$systolicBP[i] <- df_intervals$systolicBP[i+j]
+      df_intervals$PCWP[i] <- df_intervals$PCWP[i+j]
+      df_intervals$central_venous_pressure[i] <- df_intervals$central_venous_pressure[i+j]
+      df_intervals$cardiac_output[i] <- df_intervals$cardiac_output[i+j]
+      
+      df_intervals$arterial_lactate[i] <- df_intervals$arterial_lactate[i+j]
+      df_intervals$AST[i] <- df_intervals$AST[i+j]
+      df_intervals$creatinine[i] <- df_intervals$creatinine[i+j]
+      df_intervals$bilirubin[i] <- df_intervals$bilirubin[i+j]
+      df_intervals$albumin[i] <- df_intervals$albumin[i+j]
+      
+      df_intervals$sodium[i] <- df_intervals$sodium[i+j]
+      df_intervals$BNP[i] <- df_intervals$BNP[i+j]
+      df_intervals$heart_rate[i] <- df_intervals$heart_rate[i+j]
+      df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i+j]
+      df_intervals$PASP[i] <- df_intervals$PASP[i+j]
+      
+      df_intervals$PADP[i] <- df_intervals$PADP[i+j]
+      df_intervals$hemoglobin[i] <- df_intervals$hemoglobin[i+j]
+      df_intervals$LDH[i] <- df_intervals$LDH[i+j]
+      df_intervals$BUN[i] <- df_intervals$BUN[i+j]
+      df_intervals$INR[i] <- df_intervals$INR[i+j]
+      
+      df_intervals$diagnosis[i] <- df_intervals$diagnosis[i+j]
+      df_intervals$diabetes[i] <- df_intervals$diabetes[i+j]
+      df_intervals$dialysis[i] <- df_intervals$dialysis[i+j]
+      df_intervals$peripheral_vascular[i] <- df_intervals$peripheral_vascular[i+j]
+      df_intervals$status_criteria[i] <- df_intervals$status_criteria[i+j]
+      
+      df_intervals$status[i] <- df_intervals$status[i+j]
+      df_intervals$status_initial[i] <- df_intervals$status_initial[i+j]
+      df_intervals$exception[i] <- df_intervals$exception[i+j]
+      
+      df_intervals$dobutamine[i] <- max(df_intervals$dobutamine[i], df_intervals$dobutamine[i+j])
+      df_intervals$dopamine[i] <- max(df_intervals$dopamine[i], df_intervals$dopamine[i+j])
+      df_intervals$epinephrine[i] <- max(df_intervals$epinephrine[i], df_intervals$epinephrine[i+j])
+      df_intervals$milrinone[i] <- max(df_intervals$milrinone[i], df_intervals$milrinone[i+j])
+      df_intervals$IV_inotropes[i] <- df_intervals$IV_inotropes[i+j]
+      
+      df_intervals$IABP[i] <- df_intervals$IABP[i+j]
+      df_intervals$ECMO[i] <- df_intervals$ECMO[i+j]
+      df_intervals$BiVAD[i] <- df_intervals$BiVAD[i+j]
+      df_intervals$LVAD[i] <- df_intervals$LVAD[i+j]
+      df_intervals$RVAD[i] <- df_intervals$RVAD[i+j]
+      
+      df_intervals$MSCD_complication[i] <- df_intervals$MSCD_complication[i+j]
+      df_intervals$age[i] <- df_intervals$age[i+j]
+      df_intervals$life_arrhythmia[i] <- df_intervals$life_arrhythmia[i+j]
+      
+      df_intervals$BiVAD_no_discharge[i] <- df_intervals$BiVAD_no_discharge[i+j]
+      df_intervals$temp_surg_LVAD[i] <- df_intervals$temp_surg_LVAD[i+j]
+      df_intervals$other_durable_MCSD[i] <- df_intervals$other_durable_MCSD[i+j]
+      df_intervals$MCSD_malfunction[i] <- df_intervals$MCSD_malfunction[i+j]
+      df_intervals$v_tach_fib[i] <- df_intervals$v_tach_fib[i+j]
+      df_intervals$perc_LVAD[i] <- df_intervals$perc_LVAD[i+j]
+      df_intervals$MCSD_hemolysis[i] <- df_intervals$MCSD_hemolysis[i+j]
+      df_intervals$MCSD_rhf[i] <- df_intervals$MCSD_rhf[i+j]
+      df_intervals$MCSD_device_infx[i] <- df_intervals$MCSD_device_infx[i+j]
+      df_intervals$MCSD_bleed[i] <- df_intervals$MCSD_bleed[i+j]
+      df_intervals$MCSD_aortic_insf[i] <- df_intervals$MCSD_aortic_insf[i+j]
+      df_intervals$angina[i] <- df_intervals$angina[i+j]
+      } 
+  }
+}
+```
+
+
+### Fix some final variables
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
+df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F)
+df_intervals$exception[is.na(df_intervals$exception) == T] <- '0'
+
+
+### Divide certain variables by 10 or 100
+df_intervals <- df_intervals %>% 
+  mutate(BNP = as.numeric(BNP) / 100,
+         BUN = as.numeric(BUN) / 10,
+         AST = as.numeric(AST) / 100,
+         heart_rate = as.numeric(heart_rate) / 10,
+         age = as.numeric(age) / 10)
+```
+
+
+---------------------------------
+
+
+# 6. Add memory variables
+### Treatments: ever on?
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
+  
+  mutate(IV_inotropes_ever = case_when(IV_inotropes == '1' ~ '1', TRUE ~ NA_character_),
+         IABP_ever = case_when(IABP == '1' ~ '1', TRUE ~ NA_character_),
+         ECMO_ever = case_when(ECMO == '1' ~ '1', TRUE ~ NA_character_),
+         BiVAD_ever = case_when(BiVAD == '1' ~ '1', TRUE ~ NA_character_),
+         LVAD_ever = case_when(LVAD == '1' ~ '1', TRUE ~ NA_character_),
+         RVAD_ever = case_when(RVAD == '1' ~ '1', TRUE ~ NA_character_),
+         exception_ever = case_when(exception == '1' ~ '1', TRUE ~ NA_character_)) %>%
+  
+  fill(IV_inotropes_ever, .direction = 'down') %>%
+  fill(IABP_ever, .direction = 'down') %>%
+  fill(ECMO_ever, .direction = 'down') %>%
+  fill(BiVAD_ever, .direction = 'down') %>%
+  fill(LVAD_ever, .direction = 'down') %>%
+  fill(RVAD_ever, .direction = 'down') %>%
+  fill(exception_ever, .direction = 'down') %>%
+
+  mutate(IV_inotropes_ever = case_when(is.na(IV_inotropes_ever) ~ '0', TRUE ~ IV_inotropes_ever),
+         IABP_ever = case_when(is.na(IABP_ever) ~ '0', TRUE ~ IABP_ever),
+         ECMO_ever = case_when(is.na(ECMO_ever) ~ '0', TRUE ~ ECMO_ever),
+         BiVAD_ever = case_when(is.na(BiVAD_ever) ~ '0', TRUE ~ BiVAD_ever),
+         LVAD_ever = case_when(is.na(LVAD_ever) ~ '0', TRUE ~ LVAD_ever),
+         RVAD_ever = case_when(is.na(RVAD_ever) ~ '0', TRUE ~ RVAD_ever),
+         exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever))
+
+
+## Includes exception as well
+df_intervals$exception <- df_intervals$exception_ever
+df_intervals <- df_intervals %>%
+  select(-c(exception_ever))
+```
+         
+
+
+### Labs: min, max
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_max = cummax(sodium),
+         creatinine_max = cummax(creatinine),
+         bilirubin_max = cummax(bilirubin),
+         albumin_max = cummax(albumin),
+         arterial_lactate_max = cummax(arterial_lactate),
+         BUN_max = cummax(BUN),
+         AST_max = cummax(AST),
+         INR_max = cummax(INR),
+         BNP_max = cummax(BNP),
+         LDH_max = cummax(LDH)) %>%
+  
+  fill(sodium_max, .direction = 'down') %>%
+  fill(creatinine_max, .direction = 'down') %>%
+  fill(bilirubin_max, .direction = 'down') %>%
+  fill(albumin_max, .direction = 'down') %>%
+  fill(arterial_lactate_max, .direction = 'down') %>%
+  fill(BUN_max, .direction = 'down') %>%
+  fill(AST_max, .direction = 'down') %>%
+  fill(INR_max, .direction = 'down') %>%
+  fill(BNP_max, .direction = 'down') %>%
+  fill(LDH_max, .direction = 'down') %>%
+  
+  mutate(sodium_min = cummin(sodium),
+         creatinine_min = cummin(creatinine),
+         bilirubin_min = cummin(bilirubin),
+         albumin_min = cummin(albumin),
+         arterial_lactate_min = cummin(arterial_lactate),
+         BUN_min = cummin(BUN),
+         AST_min = cummin(AST),
+         INR_min = cummin(INR),
+         BNP_min = cummin(BNP),
+         LDH_min = cummax(as.numeric(LDH))) %>%
+  
+  fill(sodium_min, .direction = 'down') %>%
+  fill(creatinine_min, .direction = 'down') %>%
+  fill(bilirubin_min, .direction = 'down') %>%
+  fill(albumin_min, .direction = 'down') %>%
+  fill(arterial_lactate_min, .direction = 'down') %>%
+  fill(BUN_min, .direction = 'down') %>%
+  fill(AST_min, .direction = 'down') %>%
+  fill(INR_min, .direction = 'down') %>%
+  fill(BNP_min, .direction = 'down') %>%
+  fill(LDH_min, .direction = 'down') 
+```
+
+
+
+### Labs: slope
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>%
+  
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_lag = as.numeric(lag(sodium, n = 1)),
+         creatinine_lag = as.numeric(lag(creatinine, n = 1)),
+         bilirubin_lag = as.numeric(lag(bilirubin, n = 1)),
+         albumin_lag = as.numeric(lag(albumin, n = 1)),
+         arterial_lactate_lag = as.numeric(lag(arterial_lactate, n = 1)),
+         BUN_lag = as.numeric(lag(BUN, n = 1)),
+         AST_lag = as.numeric(lag(AST, n = 1)),
+         INR_lag = as.numeric(lag(INR, n = 1)),
+         BNP_lag = as.numeric(lag(BNP, n = 1)),
+         LDH_lag = as.numeric(lag(LDH, n = 1))) %>%
+  
+  mutate(sodium_slope = as.numeric(sodium) - sodium_lag,
+         creatinine_slope = as.numeric(creatinine) - creatinine_lag,
+         bilirubin_slope = as.numeric(bilirubin) - bilirubin_lag,
+         albumin_slope = as.numeric(albumin) - albumin_lag,
+         arterial_lactate_slope = as.numeric(arterial_lactate) - arterial_lactate_lag,
+         BUN_slope = as.numeric(BUN) - BUN_lag,
+         AST_slope = as.numeric(AST) - AST_lag,
+         INR_slope = as.numeric(INR) - INR_lag,
+         BNP_slope = as.numeric(BNP) - BNP_lag,
+         LDH_slope = as.numeric(LDH) - LDH_lag)
+
+
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_slope = case_when(is.na(sodium_slope) ~ 0, TRUE ~ sodium_slope),
+         creatinine_slope = case_when(is.na(creatinine_slope) ~ 0, TRUE ~ creatinine_slope),
+         bilirubin_slope = case_when(is.na(bilirubin_slope) ~ 0, TRUE ~ bilirubin_slope),
+         albumin_slope = case_when(is.na(albumin_slope) ~ 0, TRUE ~ albumin_slope),
+         arterial_lactate_slope = case_when(is.na(arterial_lactate_slope) ~ 0, TRUE ~ arterial_lactate_slope),
+         BUN_slope = case_when(is.na(BUN_slope) ~ 0, TRUE ~ BUN_slope),
+         AST_slope = case_when(is.na(AST_slope) ~ 0, TRUE ~ AST_slope),
+         INR_slope = case_when(is.na(INR_slope) ~ 0, TRUE ~ INR_slope),
+         BNP_slope = case_when(is.na(BNP_slope) ~ 0, TRUE ~ BNP_slope),
+         LDH_slope = case_when(is.na(LDH_slope) ~ 0, TRUE ~ LDH_slope)) %>%
+  
+  select(-c(sodium_lag, creatinine_lag, bilirubin_lag, albumin_lag,
+            arterial_lactate_lag, BUN_lag, AST_lag, INR_lag,
+            BNP_lag, LDH_lag))
+```
+
+
+---------------------------------
+
+
+# 7. Death in 6 weeks
+### Create variable
+```{r, warning=F, comment=NA, message=F}
+# General death flag (non-last group)
+df_intervals$death_flag <- 0
+df_intervals$death_flag[which(df_intervals$PX_ID %in% death_ids)] <- 1
+
+# Death within 6 weeks
+df_intervals$interval_stop <- as.numeric(df_intervals$interval_stop)
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
+  mutate(death_time = max(interval_stop))
+
+df_intervals$death6week <- 0
+df_intervals$deathdifference <- (as.numeric(df_intervals$death_time) - 
+                                   as.numeric(df_intervals$interval_stop))
+df_intervals$death6week[df_intervals$death_flag == '1' & df_intervals$deathdifference <= 42] <- 1
+
+# If transplanted, no death within 6 weeks
+df_intervals$death6week[df_intervals$transplant == '1'] <- '0'
+```
+
+
+### Return max transplant by PX_ID to last group transplant
+```{r, warning=F, comment=NA, message=F}
+df_intervals$transplant[df_intervals$last_group == '0'] <- '0'
+
+
+df_intervals <- df_intervals %>% select(-c(death_flag, death_time, deathdifference))
+```
+
+
+---------------------------------
+
+
+# 8. Impute variables 
+### Add in weight, height, and gender for body surface area
+```{r, warning=F, comment=NA, message=F}
+df_bsa <- haven::read_sas('./cand_thor.sas7bdat')
+df_bsa <- df_bsa %>%
+  select(PX_ID, CAN_HGT_CM, CAN_WGT_KG, CAN_GENDER) %>%
+  mutate(bsa = 0.007184 * (CAN_HGT_CM ^ 0.425) * (CAN_WGT_KG ^ 0.725)) %>%
+  select(PX_ID, bsa, CAN_GENDER)
+df_bsa <- df_bsa[!duplicated(df_bsa), ]
+
+
+df_intervals <- merge(df_intervals, df_bsa, by = 'PX_ID', all.x = T, all.y = F)
+rm(df_bsa)
+```
+
+
+### Replace certain variables with normal values
+
+* Lactate: 1 mmol/L
+* LDH: 220 U/L
+* Hemoglobin: 14.9 g/dL for males, 13.3 g/dL for females
+* BNP: median by status
+
+
+```{r, warning=F, comment=NA, message=F}
+df_intervals$arterial_lactate[is.na(df_intervals$arterial_lactate)] <- 1
+df_intervals$LDH[is.na(df_intervals$LDH)] <- 220
+df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'M'] <- 14.9
+df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'F'] <- 13.3
+
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '1'] <-
+  median(df_intervals$BNP[df_intervals$status == '1'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '2'] <-
+  median(df_intervals$BNP[df_intervals$status == '2'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '3'] <-
+  median(df_intervals$BNP[df_intervals$status == '3'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '4'] <-
+  median(df_intervals$BNP[df_intervals$status == '4'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '5'] <-
+  median(df_intervals$BNP[df_intervals$status == '5'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '6'] <-
+  median(df_intervals$BNP[df_intervals$status == '6'], na.rm=T)
+```
+
+
+### Impute status 4 and 6 missings
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>%
+  mutate(cardiac_output = ifelse((status == '4' & is.na(cardiac_output) & LVAD == '1'),  
+                                 2.5*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((status == '6' & is.na(cardiac_output) & LVAD == '1'),  
+                                 2.2*bsa, cardiac_output)) %>%
+  select(-c(bsa))
+
+
+df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & 
+                                       df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 10
+df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 35
+df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 15
+df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 15
+df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$status == '4' & 
+                          df_intervals$LVAD == '1'] <- 100
+df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$status == '4' & 
+                           df_intervals$LVAD == '1'] <- 80
+df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$status == '4' & 
+                          df_intervals$LVAD == '1'] <- 8.5
+
+
+df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & df_intervals$status == '6'] <- 12
+df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$status == '6'] <- 38
+df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$status == '6'] <- 18
+df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$status == '6'] <- 18
+df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$status == '6'] <- 110
+df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$status == '6'] <- 80
+df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$status == '6'] <- 8.5
+```
+
+
+### Final cleanup of variables
+```{r, warning=F, comment=NA, message=F}
+### Reupdate min/max variables based on imputations
+df_intervals$sodium_min[is.na(df_intervals$sodium_min) & !is.na(df_intervals$sodium)] <- 
+  df_intervals$sodium[is.na(df_intervals$sodium_min) & !is.na(df_intervals$sodium)]
+df_intervals$creatinine_min[is.na(df_intervals$creatinine_min) & !is.na(df_intervals$creatinine)] <- 
+  df_intervals$creatinine[is.na(df_intervals$creatinine_min) & !is.na(df_intervals$creatinine)]
+df_intervals$bilirubin_min[is.na(df_intervals$bilirubin_min) & !is.na(df_intervals$bilirubin)] <- 
+  df_intervals$bilirubin[is.na(df_intervals$bilirubin_min) & !is.na(df_intervals$bilirubin)]
+df_intervals$albumin_min[is.na(df_intervals$albumin_min) & !is.na(df_intervals$albumin)] <- 
+  df_intervals$albumin[is.na(df_intervals$albumin_min) & !is.na(df_intervals$albumin)]
+df_intervals$arterial_lactate_min[is.na(df_intervals$arterial_lactate_min) & !is.na(df_intervals$arterial_lactate)] <-
+  df_intervals$arterial_lactate[is.na(df_intervals$arterial_lactate_min) & !is.na(df_intervals$arterial_lactate)]
+df_intervals$BUN_min[is.na(df_intervals$BUN_min) & !is.na(df_intervals$BUN)] <- 
+  df_intervals$BUN[is.na(df_intervals$BUN_min) & !is.na(df_intervals$BUN)]
+df_intervals$AST_min[is.na(df_intervals$AST_min) & !is.na(df_intervals$AST)] <- 
+  df_intervals$AST[is.na(df_intervals$AST_min) & !is.na(df_intervals$AST)]
+df_intervals$INR_min[is.na(df_intervals$INR_min) & !is.na(df_intervals$INR)] <- 
+  df_intervals$INR[is.na(df_intervals$INR_min) & !is.na(df_intervals$INR)]
+df_intervals$BNP_min[is.na(df_intervals$BNP_min) & !is.na(df_intervals$BNP)] <- 
+  df_intervals$BNP[is.na(df_intervals$BNP_min) & !is.na(df_intervals$BNP)]
+df_intervals$LDH_min[is.na(df_intervals$LDH_min) & !is.na(df_intervals$LDH)] <- 
+  df_intervals$LDH[is.na(df_intervals$LDH_min) & !is.na(df_intervals$LDH)]
+
+df_intervals$sodium_max[is.na(df_intervals$sodium_max) & !is.na(df_intervals$sodium)] <- 
+  df_intervals$sodium[is.na(df_intervals$sodium_max) & !is.na(df_intervals$sodium)]
+df_intervals$creatinine_max[is.na(df_intervals$creatinine_max) & !is.na(df_intervals$creatinine)] <- 
+  df_intervals$creatinine[is.na(df_intervals$creatinine_max) & !is.na(df_intervals$creatinine)]
+df_intervals$bilirubin_max[is.na(df_intervals$bilirubin_max) & !is.na(df_intervals$bilirubin)] <- 
+  df_intervals$bilirubin[is.na(df_intervals$bilirubin_max) & !is.na(df_intervals$bilirubin)]
+df_intervals$albumin_max[is.na(df_intervals$albumin_max) & !is.na(df_intervals$albumin)] <- 
+  df_intervals$albumin[is.na(df_intervals$albumin_max) & !is.na(df_intervals$albumin)]
+df_intervals$arterial_lactate_max[is.na(df_intervals$arterial_lactate_max) & !is.na(df_intervals$arterial_lactate)] <-
+  df_intervals$arterial_lactate[is.na(df_intervals$arterial_lactate_max) & !is.na(df_intervals$arterial_lactate)]
+df_intervals$BUN_max[is.na(df_intervals$BUN_max) & !is.na(df_intervals$BUN)] <- 
+  df_intervals$BUN[is.na(df_intervals$BUN_max) & !is.na(df_intervals$BUN)]
+df_intervals$AST_max[is.na(df_intervals$AST_max) & !is.na(df_intervals$AST)] <- 
+  df_intervals$AST[is.na(df_intervals$AST_max) & !is.na(df_intervals$AST)]
+df_intervals$INR_max[is.na(df_intervals$INR_max) & !is.na(df_intervals$INR)] <- 
+  df_intervals$INR[is.na(df_intervals$INR_max) & !is.na(df_intervals$INR)]
+df_intervals$BNP_max[is.na(df_intervals$BNP_max) & !is.na(df_intervals$BNP)] <- 
+  df_intervals$BNP[is.na(df_intervals$BNP_max) & !is.na(df_intervals$BNP)]
+df_intervals$LDH_max[is.na(df_intervals$LDH_max) & !is.na(df_intervals$LDH)] <- 
+  df_intervals$LDH[is.na(df_intervals$LDH_max) & !is.na(df_intervals$LDH)]
+
+
+df_intervals <- df_intervals %>% 
+  relocate(death6week, .after=transplant) %>%
+  relocate(interval, .after=PX_ID) %>%
+  relocate(interval_start, .after=interval) %>%
+  relocate(interval_stop, .after=interval_start) %>%
+  select(-c(status_criteria))
+
+
+df_intervals$listing_year <- year(df_intervals$CAN_LISTING_DT)
+df_intervals$CAN_LISTING_DT <- NULL
+
+
+df_intervals <- df_intervals[order(df_intervals$PX_ID, as.numeric(df_intervals$interval)), ]
+```
+
+
+### Check examples with original candthor
+```{r, warning=F, comment=NA, message=F}
+set.seed(200)
+sample_ids <- sample(df_intervals$PX_ID, size=5, replace=F)
+
+df_intervals %>%
+  filter(PX_ID %in% sample_ids) %>%
+  select(PX_ID, interval, death6week, transplant, status, age, diagnosis, dialysis) %>%
+  arrange(PX_ID)
+```
+
+```{r, warning=F, comment=NA, message=F}
+df_candthor <- haven::read_sas('./cand_thor.sas7bdat')
+
+df_candthor %>%
+  filter(PX_ID %in% sample_ids) %>%
+  select('PX_ID', 'CAN_LISTING_DT',
+         'PERS_SSA_DEATH_DT', 'PERS_OPTN_DEATH_DT', 'CAN_REM_DT', 'CAN_DEATH_DT',
+          'CAN_REM_CD', 'REC_TX_DT', 'CAN_LAST_ACT_STAT_DT',
+         'CAN_AGE_IN_MONTHS_AT_LISTING', 'CAN_DGN', 'CAN_DIAB_TY', 'CAN_DIAL', 'CAN_INIT_STAT') %>%
+  arrange(PX_ID)
+```
+
+
+### Unmatched case is removed (1 patient)
+```{r, warning=F, comment=NA, message=F}
+df_intervals %>%
+  filter(is.na(age))
+
+
+df_intervals <- df_intervals %>%
+  filter(!is.na(age))  
+```
+
+---------------------------------
+
+
+# 9. Generate new clinical variables
+
+### Temporary surgery MCS
+```{r, warning=F, comment=NA, message=F}
+df_intervals <- df_intervals %>%
+  mutate(temp_surg_MCS = case_when(
+    ECMO == '1' | temp_surg_LVAD == '1' | BiVAD_no_discharge == '1' ~ 1,
+    TRUE ~ 0))
+```
+
+
+### Creatinine-only eGFR and kidney deficit
+The formula for eGFR is available at https://www.kidney.org/content/ckd-epi-creatinine-equation-2021.
+
+```{r, warning=F, comment=NA, message=F}
+df_intervals$creatinine <- as.numeric(df_intervals$creatinine)
+
+df_intervals <- df_intervals %>%
+  mutate(eGFR = case_when(
+    
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age))
+
+df_intervals$eGFR[df_intervals$dialysis == '1'] <- 0
+
+
+df_intervals$kidney_deficit <- pmax(100-df_intervals$eGFR, 0)
+```
+
+
+```{r, warning=F, comment=NA, message=F}
+df_intervals %>%
+  select(PX_ID, creatinine, CAN_GENDER, dialysis, eGFR, kidney_deficit)
+```
+
+
+
+```{r, warning=F, comment=NA, message=F}
+df_intervals$last_group <- NULL
+save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
+```
