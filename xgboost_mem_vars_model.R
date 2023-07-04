@@ -245,12 +245,12 @@ DMat_train_all <- xgb.DMatrix(data =
 
 
 params_xgb <- expand.grid(
-  eta = c(0.03, 0.1, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 0.95),
-  max_depth = 10,
-  gamma = 1,
-  colsample_bytree = 1,
-  subsample = 1,
-  scale_pos_weight = 20,
+  eta = c(0.01, 0.03, 0.05, 0.1),
+  max_depth = c(2, 4, 6, 10),
+  gamma = c(0, 0.5, 1),
+  colsample_bytree = c(0, 0.5, 1),
+  subsample = c(0, 0.5, 1),
+  scale_pos_weight = c(1, 4.5, 20),
   auc = 0)
 
 
