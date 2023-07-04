@@ -11,11 +11,11 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 2. Merge with status justification datasets and create variables (Line 145) -->
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 477) -->
 <!-- 4. Set up remaining clinical variables (Line 706) -->
-<!-- 5. Create intervals (Line 802) -->
-<!-- 6. Add memory variables (Line 1027) -->
-<!-- 7. Death in 6 weeks (Line 1170) -->
-<!-- 8. Impute variables (Line 1205) -->
-<!-- 9. Generate new clinical variables (Line 1382) -->
+<!-- 5. Create intervals (Line 811) -->
+<!-- 6. Add memory variables (Line 1038) -->
+<!-- 7. Death in 6 weeks (Line 1194) -->
+<!-- 8. Impute variables (Line 1229) -->
+<!-- 9. Generate new clinical variables (Line 1406) -->
 
 
 
@@ -809,6 +809,13 @@ df <- df %>% select(-c(JustId, events,
 
 
 # 5. Create intervals
+
+### Save non-interval data
+```{r, warning=F, comment=NA, message=F}
+save(df, file = './intervals_v16_continuous.RData')
+```
+
+
 ### Adjust time variables
 ```{r, warning=F, comment=NA, message=F}
 ### Reconstruct transplant, remove preliminary death flag since we have death ids
@@ -1047,15 +1054,17 @@ df_intervals <- df_intervals %>%
          BiVAD_ever = case_when(BiVAD == '1' ~ '1', TRUE ~ NA_character_),
          LVAD_ever = case_when(LVAD == '1' ~ '1', TRUE ~ NA_character_),
          RVAD_ever = case_when(RVAD == '1' ~ '1', TRUE ~ NA_character_),
-         exception_ever = case_when(exception == '1' ~ '1', TRUE ~ NA_character_)) %>%
+         exception_ever = case_when(exception == '1' ~ '1', TRUE ~ NA_character_),
+         temp_surg_ever = case_when(temp_surg_LVAD == '1' ~ '1', TRUE ~ NA_character_),
+         BiVAD_no_discharge_ever = case_when(BiVAD_no_discharge == '1' ~ '1', TRUE ~ NA_character_)) %>%
   
-  fill(IV_inotropes_ever, .direction = 'down') %>%
-  fill(IABP_ever, .direction = 'down') %>%
   fill(ECMO_ever, .direction = 'down') %>%
   fill(BiVAD_ever, .direction = 'down') %>%
   fill(LVAD_ever, .direction = 'down') %>%
   fill(RVAD_ever, .direction = 'down') %>%
   fill(exception_ever, .direction = 'down') %>%
+  fill(temp_surg_ever, .direction = 'down') %>%
+  fill(BiVAD_no_discharge_ever, .direction = 'down') %>%
 
   mutate(IV_inotropes_ever = case_when(is.na(IV_inotropes_ever) ~ '0', TRUE ~ IV_inotropes_ever),
          IABP_ever = case_when(is.na(IABP_ever) ~ '0', TRUE ~ IABP_ever),
@@ -1063,10 +1072,12 @@ df_intervals <- df_intervals %>%
          BiVAD_ever = case_when(is.na(BiVAD_ever) ~ '0', TRUE ~ BiVAD_ever),
          LVAD_ever = case_when(is.na(LVAD_ever) ~ '0', TRUE ~ LVAD_ever),
          RVAD_ever = case_when(is.na(RVAD_ever) ~ '0', TRUE ~ RVAD_ever),
-         exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever))
+         exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever),
+         temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ RVAD_ever),
+         BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ exception_ever))
 
 
-## Includes exception as well
+## IConvert exception to exception ever
 df_intervals$exception <- df_intervals$exception_ever
 df_intervals <- df_intervals %>%
   select(-c(exception_ever))
@@ -1391,12 +1402,11 @@ df_intervals <- df_intervals %>%
 
 
 # 9. Generate new clinical variables
-
-### Temporary surgery MCS
+### Temporary surgery MCS, ever
 ```{r, warning=F, comment=NA, message=F}
 df_intervals <- df_intervals %>%
-  mutate(temp_surg_MCS = case_when(
-    ECMO == '1' | temp_surg_LVAD == '1' | BiVAD_no_discharge == '1' ~ 1,
+  mutate(temp_surg_MCS_ever = case_when(
+    ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
     TRUE ~ 0))
 ```
 
@@ -1431,6 +1441,5 @@ df_intervals %>%
 
 
 ```{r, warning=F, comment=NA, message=F}
-df_intervals$last_group <- NULL
 save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 ```
