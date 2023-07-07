@@ -377,35 +377,6 @@ names(mat_test_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Int
 rm(interval_dummies_test, interval_dummies_train)
 ```
 
--------------
-
-
-## Comparison of Training and Testing Datasets
-
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-df_intervals %>%
-  ungroup() %>%
-  select(death6week, train_test, status, age, albumin, bilirubin, eGFR, sodium, BNP,
-         PCWP, IV_inotropes, IABP, ECMO) %>%
-  tbl_summary(by = train_test, 
-              missing = 'no', 
-              label = c(death6week ~ 'Death within 6 Weeks',
-                        age ~ 'Age at Listing / 10, Years',
-                        status ~ '6-Status in Interval',
-                        albumin ~ 'Albumin',
-                        bilirubin ~ 'Bilirubin',
-                        eGFR ~ 'eGFR',
-                        sodium ~ 'Sodium',
-                        BNP ~ 'BNP / 10',
-                        PCWP ~ 'Wedge Pressure',
-                        IV_inotropes ~ 'IV Inotropes',
-                        IABP ~ 'Intra-Aortic Balloon Pump',
-                        ECMO ~ 'ECMO')) %>%
-  modify_header(label = "**Variable**") %>%
-  add_p() %>%
-  add_overall() %>%
-  bold_labels()
-```
 
 -------------
 
@@ -419,22 +390,19 @@ We examine several models of selected variables based on clinical knowledge and 
 * Short term MCS (ECMO or Balloon Pump)
 * Natural log of (bilirubin + 1)
 * eGFR
-* BNP decile (numeric)
+* Natural log of (BNP + 1)
 
-#### Model results
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 df_intervals <- df_intervals %>%
   mutate(short_MCS_French = 
            case_when(
              (ECMO == '1' & status == '1') | IABP == '1' ~ 1,
-             TRUE ~ 0),
-    
-    BNP_decile = ntile(BNP, 10)) 
+             TRUE ~ 0)) 
 
 
 model1 <- glm(formula = as.formula(
   death6week ~ 
-    short_MCS_French + log(bilirubin + 1) + eGFR + BNP_decile), 
+    short_MCS_French + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -448,7 +416,7 @@ model1_results <- model1_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model1_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 'BNP Decile')
+model1_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
 
 model1_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -466,7 +434,6 @@ model1_results %>%
 * eGFR
 * Sodium
 * Natural log of (BNP + 1)
-* AST / 100
 * LVAD
 * Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
 
@@ -474,8 +441,7 @@ model1_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model2 <- glm(formula = as.formula(
   death6week ~ 
-    PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-    LVAD + short_MCS_ever), 
+    PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -490,7 +456,7 @@ model2_results <- model2_results %>%
            PValue = round(PValue, 3))
 
 model2_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST', 'LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model2_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -518,8 +484,7 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'p
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model3 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-     LVAD + short_MCS_ever), 
+    cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -534,7 +499,7 @@ model3_results <- model3_results %>%
            PValue = round(PValue, 3))
 
 model3_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST', 'LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model3_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -549,8 +514,7 @@ model3_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model4 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST + 
-     LVAD + short_MCS_ever), 
+    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -565,7 +529,7 @@ model4_results <- model4_results %>%
            PValue = round(PValue, 3))
 
 model4_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST', 'LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model4_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -580,8 +544,7 @@ model4_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model5 <- glm(formula = as.formula(
   death6week ~ 
-    api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-     LVAD + short_MCS_ever), 
+    api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -596,7 +559,7 @@ model5_results <- model5_results %>%
            PValue = round(PValue, 3))
 
 model5_results$Variable <- c('Intercept', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST', 'LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model5_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -614,8 +577,7 @@ model5_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model6 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-     LVAD + short_MCS_ever), 
+    cpo + papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -630,7 +592,7 @@ model6_results <- model6_results %>%
            PValue = round(PValue, 3))
 
 model6_results$Variable <- c('Intercept', 'CPO', 'PAPI', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST','LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model6_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -644,8 +606,7 @@ model6_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model7 <- glm(formula = as.formula(
   death6week ~ 
-    papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-     LVAD + short_MCS_ever), 
+    papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -660,7 +621,7 @@ model7_results <- model7_results %>%
            PValue = round(PValue, 3))
 
 model7_results$Variable <- c('Intercept', 'PAPI', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'AST','LVAD', 'Short MCS Ever')
+                             'LVAD', 'Short MCS Ever')
 
 model7_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -1006,21 +967,39 @@ legend('bottomright', cex = 0.9, xpd = T,
        col = c('#999999', '#E69F00', '#009E73', 'firebrick', '#0072B2'), lwd = 2.5)
 ```
 
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=10, fig.width=10, results='hide'}
+pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>',
+          plot=T, col='#FCAE91', print.auc=T,
+          lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
+          print.thres.cex = 1.2, 
+          print.thres.pattern= "Status%2.f",
+          print.auc.cex = 1.2,
+          legacy.axes=T)
+pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
+          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#FB6A4A', add=T, quiet=T, print.auc.cex = 1.2)
+pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
+          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#A50F15', add=T, quiet=T, print.auc.cex = 1.2)
+legend('bottomright', cex = 1.2, xpd = T,
+      legend = c('6-Status', 'French CRS', 'US CRS'),
+       col = c('#FCAE91', '#FB6A4A', '#A50F15'), lwd=3)
+```
+
 
 
 ## Calculate Harrell's C-Indices in Unblocked
+
+### Create unblocked dataset
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./intervals_v16_continuous.RData')
 df_continuous <- df
 test_ids <- unique(df_intervals_test$PX_ID)
-death_ids <- unique(df_intervals_test$PX_ID[df_intervals_test$death6week == '1'])
+death_ids <- unique(df_intervals$PX_ID[df_intervals$death6week == '1'])
 
 df_cand_thor <- haven::read_sas('./cand_thor.sas7bdat')
 df_cand_thor <- df_cand_thor %>% select(PX_ID, CAN_GENDER) %>% unique()
 df_continuous <- merge(df_continuous, df_cand_thor, by='PX_ID', all.x=T, all.y=F)
 
 
-df_continuous <- df_continuous %>% filter(PX_ID %in% test_ids)
 df_continuous$death6week <- 0
 df_continuous$death6week[which(df_continuous$PX_ID %in% death_ids)] <- 1
 
@@ -1066,15 +1045,21 @@ df_continuous <- df_continuous %>%
 
 
 df_continuous$papi[df_continuous$central_venous_pressure == 0] <- NA
+df_continuous$LVAD <- as.factor(df_continuous$LVAD)
 
 
 df_continuous$death6week[which(df_continuous$death6week == '1' & 
                               df_continuous$t_stop < (df_continuous$max_time - 42))] <- 0
+
+
+df_continuous_copy <- df_continuous
+df_continuous <- df_continuous %>% filter(PX_ID %in% test_ids)
 ```
 
 
+### 6-Status
 ```{r, warning=F, echo=F, message=F, comment=NA}
-sixstatus_c <- df_continuous[ ,c('death6week', 't_start', 't_stop')]
+sixstatus_c <- df_continuous[ ,c('PX_ID', 'death6week', 't_start', 't_stop')]
 sixstatus_c$death6week <- as.numeric(as.character(sixstatus_c$death6week))
 
 sixstatus_cpredict <- predict(glm(formula = as.formula(
@@ -1088,14 +1073,12 @@ concordance(coxph(Surv(t_start, t_stop, death6week) ~ sixstatus_cpredict, data =
 ```
 
 
+### French-CRS
 ```{r, warning=F, echo=F, message=F, comment=NA}
-model1_c <- df_continuous[ ,c('death6week', 't_start', 't_stop')]
+model1_c <- df_continuous[ ,c('PX_ID', 'death6week', 't_start', 't_stop')]
 model1_c$death6week <- as.numeric(as.character(model1_c$death6week))
 
-model1_cpredict <- predict(glm(formula = as.formula(
-  death6week ~ short_MCS_French + log(bilirubin + 1) + eGFR + BNP_decile), 
-  data = df_continuous, 
-  family = binomial), newdata = df_continuous, type = 'response')
+model1_cpredict <- predict(model1, newdata = df_continuous, type = 'response')
 model1_c$model1_cpredict <- model1_cpredict
 
 
@@ -1103,16 +1086,13 @@ concordance(coxph(Surv(t_start, t_stop, death6week) ~ model1_cpredict, data = mo
 ```
 
 
+### US-CRS
 ```{r, warning=F, echo=F, message=F, comment=NA}
-model6_c <- df_continuous[ ,c('death6week', 't_start', 't_stop')]
+model6_c <- df_continuous[ ,c('PX_ID', 'death6week', 't_start', 't_stop')]
 model6_c$death6week <- as.numeric(as.character(model6_c$death6week))
 
 
-model6_cpredict <- predict(glm(formula = as.formula(
-  death6week ~ cpo + papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + AST +
-     LVAD + short_MCS_ever), 
-  data = df_continuous, 
-  family = binomial), newdata = df_continuous, type = 'response')
+model6_cpredict <- predict(model6, newdata = df_continuous, type = 'response')
 model6_c$model6_cpredict <- model6_cpredict
 
 
@@ -1134,49 +1114,285 @@ paste0('US-CRS Brier: ', DescTools::BrierScore(model6_c$death6week, model6_c$mod
 ```
 
 
-## Plot of Predicted French Model Mortality vs. Average Survival by Status
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-df_intervals_test_model1 <- df_intervals_test_model1 %>% select(PX_ID, status, death6week)
-df_intervals_test_model1$pred_death <- model1_predict
-df_intervals_test_model1 <- subset(df_intervals_test_model1, !is.na(df_intervals_test_model1$status))
-df_intervals_test_model1$avg_death <- ave(as.numeric(df_intervals_test_model1$death6week) - 1, df_intervals_test_model1$status)
+
+-------------
+
+
+## Comparison of Training and Testing Datasets (Table 1)
+
+These are considered:
+
+- 6 Status at Listing
+- Age at Listing
+- Sex
+- Race
+- Albumin
+- Bilirubin
+- eGFR
+- Sodium
+- BNP
+- Pulmonary Systolic BP, Pulmonary Diastolic BP
+- Central Venous Pressure
+
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+df_continuous_table1 <- df %>%
+  select(PX_ID, status, age, albumin, bilirubin, creatinine, sodium, BNP, PASP, PADP, central_venous_pressure,
+         systolicBP, diastolicBP, cardiac_output) %>%
+  group_by(PX_ID) %>%
+  filter(row_number() == 1)
+df_continuous_table1$train_test <- 'Train'
+df_continuous_table1$train_test[df_continuous_table1$PX_ID %in% test_ids] <- 'Test'
+
+df_cand_thor <- haven::read_sas('./cand_thor.sas7bdat')
+df_cand_thor <- df_cand_thor %>% select(PX_ID, CAN_GENDER, CAN_RACE) %>% unique()
+df_continuous_table1 <- merge(df_continuous_table1, df_cand_thor, by='PX_ID', all.x=T, all.y=F)
+
+
+df_continuous_table1 <- df_continuous_table1 %>%
+  mutate(eGFR = case_when(
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age)) %>%
+  
+  mutate(race = case_when(
+    CAN_RACE == '8' ~ 'White',
+    CAN_RACE == '16' ~ 'Black or AA',
+    CAN_RACE == '64' ~ 'Asian',
+    CAN_RACE == '2000' ~ 'Hispanic or Latino',
+    TRUE ~ 'Other' )) %>%
+  
+  select(-c(CAN_RACE, creatinine))
+
+df_continuous_table1$train_test <- factor(df_continuous_table1$train_test, levels = c('Train', 'Test'))
+df_continuous_table1 <- df_continuous_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race', 
+                                           'status', 'albumin', 'bilirubin', 'eGFR',
+                                           'sodium', 'BNP', 'cardiac_output', 
+                                           'PASP', 'PADP', 'systolicBP', 'diastolicBP',
+                                           'central_venous_pressure')]
+
+
+df_continuous_table1 %>%
+  ungroup() %>%
+  tbl_summary(by = train_test, 
+              missing = 'no', 
+              statistic = all_continuous() ~ "{mean} ({sd})",
+              label = c(age ~ 'Age at Listing, mean (SD), y',
+                        CAN_GENDER ~ 'Gender, No. (%)',
+                        race ~ 'Race, No. (%)',
+                        status ~ '6-Status, No. (%)',
+                        albumin ~ 'Albumin, mean (SD), g/dL',
+                        bilirubin ~ 'Bilirubin, mean (SD), mg/dL',
+                        eGFR ~ 'eGFR, mean (SD), mL/min/1.73m2',
+                        sodium ~ 'Sodium, mean (SD), mEq/L',
+                        BNP ~ 'BNP, mean (SD), pg/mL',
+                        cardiac_output ~ 'Cardiac output, mean (SD), L/min',
+                        PASP ~ 'Pulmonary Systolic BP, mean (SD), mm Hg',
+                        PADP ~ 'Pulmonary Diastolic BP, mean (SD), mm Hg',
+                        systolicBP ~ 'Systolic BP, mean (SD), mm Hg',
+                        diastolicBP ~ 'Diastolic BP, mean (SD), mm Hg',
+                        central_venous_pressure ~ 'Central Venous Pressure, mean (SD), mm Hg')) %>%
+  modify_header(label = "**Variable**") %>%
+  add_p() %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+
+## Find 50-point percentile cutoffs based on log-odds on entire dataset
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+model6_allpredict <- predict(model6, newdata = df_continuous_copy)
+model6_allpredict <- model6_allpredict[!is.na(model6_allpredict)]
+
+
+cutoffs <- quantile(model6_allpredict, probs = seq(0, 1, length.out = 50))
+cutoffs <- data.frame(Score = 1:50, RiskCutoff = cutoffs)
+cutoffs$RiskCutoff <- round(cutoffs$RiskCutoff, 4)
+
+rownames(cutoffs) <- NULL
+
+cutoffs %>%
+  kable(align=c('c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+-------------
+
+
+## Coefficient plots
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_coefplot <- as.data.frame(summary(model6)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot$var <- rownames(df_coefplot)
+rownames(df_coefplot) <- NULL
+colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
+
+df_coefplot$french_est <- NA
+df_coefplot$french_stderr <- NA
+
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model1)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Estimate']
+
+
+df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model1)$coefficients['log(bilirubin + 1)', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Std. Error']
+
+
+df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
+df_coefplot$var <- c('(Intercept)', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin', 
+'eGFR', 'Sodium', 'Log BNP', 'Durable LVAD', 'Short-Term MCS')
+df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
+
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 
+                                'CPO', 'PAPi', 'Albumin', 'Sodium', 'Durable LVAD'))))
+
+
+### Scale certain estimates
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- df_coefplot$french_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_est[df_coefplot$var == 'PAPi'] <- df_coefplot$french_est[df_coefplot$var == 'PAPi'] * 2
+df_coefplot$french_est[df_coefplot$var == 'Sodium'] <- df_coefplot$french_est[df_coefplot$var == 'Sodium'] * 10
+
+
+df_coefplot <- df_coefplot %>%
+  mutate(
+    french_lower = french_est - (1.96*french_stderr),
+    french_upper = french_est + (1.96*french_stderr),
+    us_lower = us_est - (1.96*us_stderr),
+    us_upper = us_est + (1.96*us_stderr)) %>%
+  select(-c(french_stderr, us_stderr))
+
+
+df_coefplot <- df_coefplot %>%
+  pivot_longer(!var, names_to = 'stat', values_to = 'count')
+df_coefplot$model <- ifelse(grepl('^french', df_coefplot$stat), 'French', 'US')
+df_coefplot$stat <- sub('.*_', '', df_coefplot$stat)
+
+df_coefplot$est <- ifelse(df_coefplot$stat == 'est', df_coefplot$count, NA)
+df_coefplot$lower <- ifelse(df_coefplot$stat == 'lower', df_coefplot$count, NA)
+df_coefplot$upper <- ifelse(df_coefplot$stat == 'upper', df_coefplot$count, NA)
+
+df_coefplot$stat <- NULL; df_coefplot$count <- NULL
+df_coefplot <- df_coefplot %>%
+  group_by(var, model) %>%
+  summarize_all(~ max(., na.rm=T), .groups = 'drop')
+
+df_coefplot$est[df_coefplot$est == -Inf] <- NA
+df_coefplot$lower[df_coefplot$lower == -Inf] <- NA
+df_coefplot$upper[df_coefplot$upper == -Inf] <- NA
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 'CPO', 'PAPi', 'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
+
+
+df_coefplot$var[df_coefplot$var == 'Short-Term MCS'] <- 'Short-Term MCS*'
+df_coefplot$var[df_coefplot$var == 'eGFR'] <- 'eGFR**'
+df_coefplot$var[df_coefplot$var == 'PAPi'] <- 'PAPi***'
+df_coefplot$var[df_coefplot$var == 'Sodium'] <- 'Sodium**'
 
 
 
-ggplot(data=df_intervals_test_model1, aes(x=avg_death, y=pred_death)) +
-  geom_point(aes(color = status)) +
-  ggtitle('Avg. 6-Status Survival vs. French CRS Survival') +
-  scale_color_manual(name = 'Status', values = c('#999999', '#E69F00', '#009E73', 'firebrick', '#0072B2', '#CC79A7')) +
-  ylab('Predicted Rate of Death') + xlab('Average Rate of Death') + 
+
+df_coefplot %>%
+  ggplot(aes(x=est, 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium**', 'Albumin', 'PAPi***', 'CPO', 
+                                      'Log BNP', 'eGFR**', 'Log Bilirubin', 'Short-Term MCS*')), 
+             color=model)) +
+  geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
+  geom_vline(xintercept = 0, lty = 2, color = 'red') +
+  xlab('Effect Size') + xlim(-1.25, 1.25) +
+  scale_colour_manual(name='Model', values=c('#fd8d3c', '#bd0026'), labels = c('French-CRS', 'US-CRS')) + 
   theme_bw() +
-  theme(
-    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_text(size = 14, margin = margin(r=5)),
-    axis.text.y = element_text(size = 13, margin = margin(r=5)),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(face='bold', size = 14, margin = margin(t=5)), 
+        axis.text.x = element_text(face='bold', size = 13, margin = margin(t=5)), 
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face='bold', size = 13, margin = margin(r=5)),
+        legend.text = element_text(size = 16),
+        legend.title = element_text(size = 16))  
 ```
 
 
 
-## Plot of Predicted Novel US Model Mortality vs. Average Survival by Status
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-df_intervals_test_model6 <- df_intervals_test_model6 %>% select(PX_ID, status, death6week)
-df_intervals_test_model6$pred_death <- model6_predict
-df_intervals_test_model6 <- subset(df_intervals_test_model6, !is.na(df_intervals_test_model6$status))
-df_intervals_test_model6$avg_death <- ave(as.numeric(df_intervals_test_model6$death6week) - 1, df_intervals_test_model6$status)
+## Plot 50-Point Score Based on 1-Year RMST for US-CRS model
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+model6_rmst <- model6_c
+model6_rmst <- subset(model6_rmst, model6_rmst$t_start <= 365)
+model6_rmst$t_stop[model6_rmst$t_stop > 365] <- 365
+
+model6_rmst <- model6_rmst %>% 
+  group_by(PX_ID) %>%
+  mutate(time_diff = t_stop - t_start) %>%
+  mutate(product = time_diff * (1-model6_cpredict)) 
+
+model6_rmst <- aggregate(model6_rmst$product, by=list(model6_rmst$PX_ID), FUN=sum)
+colnames(model6_rmst) <- c('PX_ID', 'rmst')
 
 
 
-ggplot(data=df_intervals_test_model6, aes(x=avg_death, y=pred_death)) +
-  geom_point(aes(color = status)) +
-  ggtitle('Avg. 6-Status Survival vs. US CRS Survival') +
-  scale_color_manual(name = 'Status', values = c('#999999', '#E69F00', '#009E73', 'firebrick', '#0072B2', '#CC79A7')) +
-  ylab('Predicted Rate of Death') + xlab('Average Rate of Death') + 
-  theme_bw() +
+model6_rmst$score <- 50*(model6_rmst$rmst /365)
+hist(model6_rmst$score)
+```
+
+
+
+
+
+
+
+## Plot calibration for US-CRS
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+model6_calibration <- df_intervals_test_model6 %>%
+  select(PX_ID, death6week, status) %>%
+  mutate(predicted = model6_predict)
+
+model6_calibration %>%
+  mutate(decile_US_CRS = ntile(predicted, 10)) %>%
+  group_by(decile_US_CRS) %>%
+  summarise(observed = mean(as.numeric(as.character(death6week))),
+            predicted = mean(predicted)) %>%
+  ggplot(aes(x = predicted, y = observed)) +
+  xlab('Predicted Values') + ylab('Observed Values') +
+  geom_point(size = 2.5) + geom_abline(linewidth = 1.2, intercept = 0, slope = 1, color = 'firebrick') + 
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size = 14, margin = margin(t=5)), 
+        axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+        axis.title.y = element_text(size = 14, margin = margin(r=5)),
+        axis.text.y = element_text(size = 13, margin = margin(r=5))) +
+  lims(x = c(0, 0.06), y= c(0,0.06))
+```
+
+
+
+## Boxplot of predicted risk by status
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+model6_calibration <- subset(model6_calibration, !is.na(model6_calibration$status))
+
+model6_calibration %>%
+  ggplot(aes(y = predicted, x = status, color = factor(status))) +
+  geom_boxplot() +
+  xlab('') + ylab('Predicted Risk from US-CRS') + labs(color = 'Status') +
+  theme_bw() + 
+  scale_color_brewer(palette='Reds') +
   theme(
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
@@ -1184,8 +1400,8 @@ ggplot(data=df_intervals_test_model6, aes(x=avg_death, y=pred_death)) +
     axis.title.y = element_text(size = 14, margin = margin(r=5)),
     axis.text.y = element_text(size = 13, margin = margin(r=5)),
     legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
+    legend.text = element_text(size = 13))
+
 ```
 
 
