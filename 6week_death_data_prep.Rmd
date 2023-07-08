@@ -10,12 +10,12 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 1. Set up original modified dataset (Line 33) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 150) -->
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
-<!-- 4. Set up remaining clinical variables (Line 731) -->
-<!-- 5. Create intervals (Line 837) -->
-<!-- 6. Add memory variables (Line 1067) -->
-<!-- 7. Death in 6 weeks (Line 1223) -->
-<!-- 8. Impute variables (Line 1251) -->
-<!-- 9. Generate new clinical variables (Line 1438) -->
+<!-- 4. Set up remaining clinical variables (Line 733) -->
+<!-- 5. Create intervals (Line 839) -->
+<!-- 6. Add memory variables (Line 1069) -->
+<!-- 7. Death in 6 weeks (Line 1218) -->
+<!-- 8. Impute variables (Line 1246) -->
+<!-- 9. Generate new clinical variables (Line 1422) -->
 
 
 ```{r setup, include=F, warning=F, echo=F, message=F, comment=NA}
@@ -573,7 +573,8 @@ df <- df %>%
 transplant_ids <- unique(df$PX_ID[df$transplant == 1])
 transplant_ids_candthor <- unique(df_candthor$PX_ID[df_candthor$transplant_cand_thor == 1])
 
-paste0('Difference Between Candthor and Dataset: ', setdiff(transplant_ids_candthor, transplant_ids))
+paste0('In Candthor, not in Dataset: ', setdiff(transplant_ids_candthor, transplant_ids))
+paste0('In Dataset, not in Candthor: ', setdiff(transplant_ids, transplant_ids_candthor))
 rm(transplant_ids_candthor)
 
 paste0('Number of Patients: ', length(unique(df$PX_ID)))
@@ -710,7 +711,8 @@ candthor_death_ids <- df_candthor_raw %>%
 candthor_death_ids <- unique(candthor_death_ids$PX_ID)
 
 
-paste0('Difference Between Candthor and Dataset: ', setdiff(candthor_death_ids, death_ids))
+paste0('In Candthor, not in Dataset: ', setdiff(candthor_death_ids, death_ids))
+paste0('In Dataset, not in Candthor: ', setdiff(death_ids, candthor_death_ids))
 rm(candthor_death_ids)
 ```
 
@@ -878,15 +880,13 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
     interval_start = 14 * (interval - 1),
     interval_stop = 14 * interval,
     max_time = max(t_stop)) 
-
-
-## Remove extra intervals from floor
-df_intervals <- df_intervals %>% filter(interval_start <= max_time)
 ```
 
 
-### Find extra intervals and fill in previous row with data
+### Account for changes between intervals
 ```{r, warning=F, comment=NA, message=F}
+
+## Fill in previous row with data
 for(i in nrow(df_intervals):2) {
   if(df_intervals$PX_ID[i] == df_intervals$PX_ID[i-1] & df_intervals$interval_start[i] > df_intervals$max_time[i]) {
     
@@ -957,28 +957,7 @@ for(i in nrow(df_intervals):2) {
   }
 }
 
-## Ignore 0-day intervals
-df_intervals <- subset(df_intervals, df_intervals$interval_start <= df_intervals$max_time)
-
-
-
-rm(duplicate_counts, row_reps); invisible(gc())
-
-
-
-### Reassign last group flags
-df_intervals <- df_intervals %>% group_by(PX_ID) %>%
-  mutate(
-    last_group = case_when(
-      row_number() == n() ~ 1,
-      TRUE ~ 0)) %>%
-  select(-c(max_time))
-```
-
-
-
-### Check changes; must check if changes in next row, since a row can be as little as 1 day- check up to 14 rows after
-```{r, warning=F, comment=NA, message=F}
+## Check changes; must check if changes in next row, since a row can be as little as 1 day- check up to 14 rows after
 for(j in 1:14) {
   for(i in 1:(nrow(df_intervals)-j)) {
     if(df_intervals$interval_start[i] <= df_intervals$t_start[i+j] & 
@@ -1052,10 +1031,26 @@ for(j in 1:14) {
 ```
 
 
+### Clean up intervals
+```{r, warning=F, comment=NA, message=F}
+## Remove extra intervals from floor
+df_intervals <- df_intervals %>% filter(interval_start <= max_time)
+
+
+### Reassign last group flags
+df_intervals <- df_intervals %>% group_by(PX_ID) %>%
+  mutate(
+    last_group = case_when(
+      row_number() == n() ~ 1,
+      TRUE ~ 0)) %>%
+  select(-c(max_time))
+```
+
+
 ### Fix some final variables
 ```{r, warning=F, comment=NA, message=F}
 df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
-df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F)
+df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F) ### Clean up string variables
 df_intervals$exception[is.na(df_intervals$exception) == T] <- '0'
 
 
@@ -1108,7 +1103,7 @@ df_intervals <- df_intervals %>%
          BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ exception_ever))
 
 
-## IConvert exception to exception ever
+## Convert exception to exception ever
 df_intervals$exception <- df_intervals$exception_ever
 df_intervals <- df_intervals %>%
   select(-c(exception_ever))
@@ -1418,17 +1413,6 @@ df_candthor %>%
           'CAN_REM_CD', 'REC_TX_DT', 'CAN_LAST_ACT_STAT_DT',
          'CAN_AGE_IN_MONTHS_AT_LISTING', 'CAN_DGN', 'CAN_DIAB_TY', 'CAN_DIAL', 'CAN_INIT_STAT') %>%
   arrange(PX_ID)
-```
-
-
-### Unmatched case is removed (1 patient)
-```{r, warning=F, comment=NA, message=F}
-df_intervals %>%
-  filter(is.na(age))
-
-
-df_intervals <- df_intervals %>%
-  filter(!is.na(age))  
 ```
 
 
