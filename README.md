@@ -9,3 +9,8 @@ A premade dataset generated from SRTR data is also used; details provided at htt
 
 Files should be run in this order:
 
+### 1. 6week_death_data_prep.Rmd
+
+Creates 14-day interval (blocked) dataset from SRTR data, including 6-week mortality outcome for patients not transplanted. Checks against original source dataset, as well as pre- and post- blocking, are performed.
+
+Updated 7/8/2023: Added.
