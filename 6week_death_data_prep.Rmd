@@ -7,15 +7,17 @@ output:
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
  
-<!-- 1. Set up original modified dataset (Line 33) -->
-<!-- 2. Merge with status justification datasets and create variables (Line 150) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
-<!-- 4. Set up remaining clinical variables (Line 733) -->
-<!-- 5. Create intervals (Line 839) -->
-<!-- 6. Add memory variables (Line 1069) -->
-<!-- 7. Death in 6 weeks (Line 1218) -->
-<!-- 8. Impute variables (Line 1246) -->
-<!-- 9. Generate new clinical variables (Line 1422) -->
+<!-- 1. Set up original modified dataset (Line 35) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 152) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 484) -->
+<!-- 4. Set up remaining clinical variables (Line 735) -->
+<!-- 5. Create intervals (Line 841) -->
+<!-- 6. Add memory variables (Line 1072) -->
+<!-- 7. Death in 6 weeks (Line 1220) -->
+<!-- 8. Impute variables (Line 1256) -->
+<!-- 9. Generate new clinical variables (Line 1424) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1467) -->
+
 
 
 ```{r setup, include=F, warning=F, echo=F, message=F, comment=NA}
@@ -1452,12 +1454,68 @@ df_intervals$kidney_deficit <- pmax(100-df_intervals$eGFR, 0)
 ```
 
 
+#### Examine eGFR and kidney to check eGFR
 ```{r, warning=F, comment=NA, message=F}
 df_intervals %>%
   select(PX_ID, creatinine, CAN_GENDER, dialysis, eGFR, kidney_deficit)
 ```
 
 
+---------------------------------
+
+
+# 10. Sample checks between blocked and unblocked
+
+### A random sample of 10 patients
+```{r}
+sample_ids <- sample(df$PX_ID, size=10, replace=F)
+
+df <- df %>% filter(PX_ID %in% sample_ids)
+df_intervals <- df_intervals %>% filter(PX_ID %in% sample_ids)
+```
+
+```{r}
+df %>%
+  select(PX_ID, t_start, t_stop, last_group, status, systolicBP, PCWP, cardiac_output, BNP)
+```
+
+```{r}
+df_intervals %>%
+  select(PX_ID, interval_start, interval_stop, last_group, status, systolicBP, PCWP, cardiac_output, BNP)
+```
+
+
+### A patient where status and some lab variables change
+```{r}
+df %>%
+  filter(PX_ID == '1257001')  %>%
+  select(PX_ID, t_start, t_stop, last_group, status, systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+```{r}
+df_intervals %>%
+  filter(PX_ID == '1257001')  %>%
+  select(PX_ID, interval_start, interval_stop, status, 
+         last_group, systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+
+### A patient where data changes in <14 days
+```{r}
+df %>%
+  filter(PX_ID == '1252031')  %>%
+  select(PX_ID, t_start, t_stop, status, systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+```{r}
+df_intervals %>%
+  filter(PX_ID == '1252031')  %>%
+  select(PX_ID, interval_start, interval_stop, status, 
+         systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+
+### Save final dataset
 
 ```{r, warning=F, comment=NA, message=F}
 save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
