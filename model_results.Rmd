@@ -11,7 +11,7 @@ authors: Kevin Zhang
 <!-- 2. Set up matrices for predictions (Line 129) -->
 <!-- 3. Run selected logistic regression models (Line 580) -->
 <!-- 4. Obtain machine learning model results (Line 857) -->
-<!-- 5. Make predictions on test dataset (Line 915) -->
+<!-- 5. Make predictions on test dataset (blocked dataset) (Line 915) -->
 <!-- 6. Create AUC curves (Line 956) -->
 
 
@@ -912,7 +912,7 @@ load('./Newest Models/model_xgboost_mem_final.RData')
 -------------
 
 
-# 5. Make predictions on test dataset
+# 5. Make predictions on test dataset (blocked dataset)
 
 ```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 model1_predict <- as.numeric(
@@ -1018,6 +1018,3 @@ legend('bottomright', cex = 1.2, xpd = T,
       legend = c('6-Status', 'French CRS', 'US CRS'),
        col = c('#FCAE91', '#FB6A4A', '#A50F15'), lwd=3)
 ```
-
-
-
