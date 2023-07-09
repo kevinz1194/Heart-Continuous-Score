@@ -9,6 +9,8 @@ Files should be run in this order:
 ### 1. 6week_death_data_prep.Rmd
 Creates 14-day interval (blocked) dataset from SRTR data, including 6-week mortality outcome for patients not transplanted. Checks against original source dataset, as well as pre- and post- blocking, are performed.
 
+Datasets required: **status_changes_pubsaf2303.csv**, **JustFormHRStat1.sas7bdat**, **JustFormHRStat2.sas7bdat**, **JustFormHRStat3.sas7bdat**, **JustFormHRStat4.sas7bdat**. 
+
 Updated 7/9/2023: Added.
 
 
