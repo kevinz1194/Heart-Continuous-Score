@@ -9,11 +9,11 @@ authors: Kevin Zhang
 
 <!-- 1. Set up dataset with generated cardiac variables (Line 32) -->
 <!-- 2. Set up matrices for predictions (Line 132) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 583) -->
-<!-- 4. Obtain machine learning model results (Line 981) -->
-<!-- 5. Make predictions on test dataset (Line 1039) -->
-<!-- 6. Create AUC curves (Line 1080) -->
-<!-- 7. Variable importance plots from gradient-boosted models/Supplement 7 (Line 1150) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 586) -->
+<!-- 4. Obtain machine learning model results (Line 990) -->
+<!-- 5. Make predictions on test dataset (Line 1048) -->
+<!-- 6. Create AUC curves (Line 1089) -->
+<!-- 7. Variable importance plots from gradient-boosted models/eSupplement 7 (Line 1162) -->
 
 
 
@@ -132,6 +132,7 @@ save(df_intervals, file = './df_intervals_setup.RData') ### Save a cleaner copy
 # 2. Set up matrices for predictions
 
 ### Training matrices
+
 ```{r, warning=F, comment=NA}
 interval_dummies_train <- predict(
   caret::dummyVars(~ diagnosis + dobutamine + dopamine + epinephrine + milrinone, 
@@ -275,6 +276,7 @@ names(mat_train_all) <-  c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'I
 
 
 ### Testing matrices
+
 ```{r, warning=F, comment=NA}
 ## Testing matrix
 interval_dummies_test <- predict(
@@ -511,6 +513,7 @@ df_intervals_test$train_test <- NULL
 
 
 ### Matrices for gradient-boosted models
+
 ```{r, warning=F, comment=NA}
 DMat_test <- xgb.DMatrix(as.matrix(mat_test_numeric[,c('(Intercept)', 
                                                        'Interval_1', 'Interval_2', 'Interval_3', 'Interval_4',
@@ -585,6 +588,7 @@ All models are run in the training datasets.
 
 
 ### 6-Status Model
+
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model6status <- glm(formula = as.formula(
   death6week ~ status), 
@@ -678,6 +682,7 @@ model2_results %>%
 
 
 #### Check that CPO and API are not heavily correlated
+
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'pairwise.complete.obs', method = 'pearson'))
 paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'pairwise.complete.obs', method = 'spearman'))
@@ -685,6 +690,7 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'p
 
 
 #### Model results
+
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model3 <- glm(formula = as.formula(
   death6week ~ 
@@ -779,6 +785,7 @@ model5_results %>%
 
 
 #### Check that CPO and PAPi are not heavily correlated
+
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
 paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
@@ -786,6 +793,7 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, use = '
 
 
 #### Model results
+
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model6 <- glm(formula = as.formula(
   death6week ~ 
@@ -869,6 +877,7 @@ model_comparison %>%
 
 
 ### Coefficient plot of results (Figure 1)
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_coefplot <- as.data.frame(summary(model6)$coefficients)[ ,c('Estimate', 'Std. Error')]
 df_coefplot$var <- rownames(df_coefplot)
@@ -1079,7 +1088,8 @@ df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_
 
 # 6. Create AUC curves
 
-### ROC curve for models with no memory variables (Supplemental Appendix 5)
+### ROC curve for models with no memory variables (eSupplement 5)
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
           plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
@@ -1102,7 +1112,8 @@ legend('bottomright', cex = 0.9, xpd = T,
 ```
 
 
-### ROC curve for models with all memory variables (Supplemental Appendix 5)
+### ROC curve for models with all memory variables (eSupplement 5)
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
           plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
@@ -1126,6 +1137,7 @@ legend('bottomright', cex = 0.9, xpd = T,
 
 
 ### ROC curve for subset of models (Figure 2)
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=10, fig.width=10, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>',
           plot=T, col='#FCAE91', print.auc=T,
@@ -1147,9 +1159,10 @@ legend('bottomright', cex = 1.2, xpd = T,
 -------------
 
 
-# 7. Variable importance plots from gradient-boosted models/Supplement 7
+# 7. Variable importance plots from gradient-boosted models/eSupplement 7
 
 ## Variable importance for XGBoost, No Memory
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
 importance1 <- importance1[importance1$Gain >= 0.03, ]
@@ -1175,6 +1188,7 @@ p1 +
 
 
 ## Variable importance for XGBoost, All Memory
+
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
 importance2 <- importance2[importance2$Gain >= 0.03, ]
