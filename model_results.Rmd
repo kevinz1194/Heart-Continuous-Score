@@ -587,7 +587,7 @@ All models are run in the training datasets.
 ### 6-Status Model
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model6status <- glm(formula = as.formula(
-  death6week ~ status, 
+  death6week ~ status), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
   
