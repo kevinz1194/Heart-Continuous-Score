@@ -10,9 +10,9 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 31) -->
 <!-- 2. Set up matrices for predictions (Line 129) -->
 <!-- 3. Run selected logistic regression models (Line 580) -->
-<!-- 4. Obtain machine learning model results (Line 857) -->
-<!-- 5. Make predictions on test dataset (blocked dataset) (Line 915) -->
-<!-- 6. Create AUC curves (Line 956) -->
+<!-- 4. Obtain machine learning model results (Line 861) -->
+<!-- 5. Make predictions on test dataset (blocked dataset) (Line 919) -->
+<!-- 6. Create AUC curves (Line 960) -->
 
 
 
@@ -612,6 +612,8 @@ model1_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+save(model1, file = './model_frenchCRS.RData')
 ```
 
 
@@ -794,6 +796,8 @@ model6_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+save(model6, file = './model_USCRS.RData')
 ```
 
 
