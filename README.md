@@ -14,3 +14,21 @@ Files should be run in this order:
 Creates 14-day interval (blocked) dataset from SRTR data, including 6-week mortality outcome for patients not transplanted. Checks against original source dataset, as well as pre- and post- blocking, are performed.
 
 Updated 7/8/2023: Added.
+
+
+### 2. elastic_net_model.R
+
+Sample iteration of elastic net models with parameter tuning on alpha and lambda. Requires large amount of computational resources. Optional.
+Estimated runtime of several hours on a high-memory node.
+
+Updated 7/8/2023: Added.   
+
+
+### 3. xgboost_mem_vars_model.R
+
+Sample iteration of gradient-boosted models with parameter tuning. Requires large amount of computational resources. Optional.
+Estimated runtime of several days on a high-memory node.
+
+Updated 7/8/2023: Added.   
+
+
