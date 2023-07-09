@@ -40,6 +40,6 @@ Updated 7/9/2023: Added.
 
 
 ### 5. figures_unblocked.Rmd
-Figures from the full, unblocked (no 14-day intervals) dataset. Rows represent justification form changes.
+Figures from the full, unblocked (no 14-day intervals) dataset. Uses patient characteristics from the last justification form.
 
 Updated 7/9/2023: Added.
