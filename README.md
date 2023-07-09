@@ -32,3 +32,8 @@ Estimated runtime of several days on a high-memory node.
 Updated 7/8/2023: Added.   
 
 
+### 4. model_results.Rmd
+
+Runs logistic regression models, creates predicted results, and AUC curves. 
+
+Updated 7/8/2023: Added.   
