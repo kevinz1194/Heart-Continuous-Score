@@ -7,12 +7,13 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 31) -->
-<!-- 2. Set up matrices for predictions (Line 129) -->
-<!-- 3. Run selected logistic regression models (Line 580) -->
-<!-- 4. Obtain machine learning model results (Line 861) -->
-<!-- 5. Make predictions on test dataset (blocked dataset) (Line 919) -->
-<!-- 6. Create AUC curves (Line 960) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 32) -->
+<!-- 2. Set up matrices for predictions (Line 132) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 583) -->
+<!-- 4. Obtain machine learning model results (Line 970) -->
+<!-- 5. Make predictions on test dataset (Line 1028) -->
+<!-- 6. Create AUC curves (Line 1069) -->
+<!-- 7. Variable importance plots from gradient-boosted models/Supplement 7 (Line 1139) -->
 
 
 
@@ -116,6 +117,8 @@ center_ids_train <- sample(x = unique(df_intervals$CenterId),
                            replace = F)
 df_intervals$train_test <-  'Test'
 df_intervals$train_test[df_intervals$CenterId %in% center_ids_train] <- 'Train'
+
+save(center_ids_train, file = './train_ids.RData')
 df_intervals$CenterId <- NULL
 
 
@@ -830,7 +833,6 @@ model7_results %>%
 ```
 
 
-
 ### Compare model AICs and BICs
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -852,6 +854,113 @@ model_comparison %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+```
+
+
+### Coefficient plot of results (Figure 1)
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_coefplot <- as.data.frame(summary(model6)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot$var <- rownames(df_coefplot)
+rownames(df_coefplot) <- NULL
+colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
+
+df_coefplot$french_est <- NA
+df_coefplot$french_stderr <- NA
+
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model1)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Estimate']
+
+
+df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model1)$coefficients['log(bilirubin + 1)', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Std. Error']
+
+
+df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
+df_coefplot$var <- c('(Intercept)', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin', 
+'eGFR', 'Sodium', 'Log BNP', 'Durable LVAD', 'Short-Term MCS')
+df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
+
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 
+                                'CPO', 'PAPi', 'Albumin', 'Sodium', 'Durable LVAD'))))
+
+
+### Scale certain estimates
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- df_coefplot$french_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_est[df_coefplot$var == 'PAPi'] <- df_coefplot$french_est[df_coefplot$var == 'PAPi'] * 2
+df_coefplot$french_est[df_coefplot$var == 'Sodium'] <- df_coefplot$french_est[df_coefplot$var == 'Sodium'] * 10
+
+
+df_coefplot <- df_coefplot %>%
+  mutate(
+    french_lower = french_est - (1.96*french_stderr),
+    french_upper = french_est + (1.96*french_stderr),
+    us_lower = us_est - (1.96*us_stderr),
+    us_upper = us_est + (1.96*us_stderr)) %>%
+  select(-c(french_stderr, us_stderr))
+
+
+df_coefplot <- df_coefplot %>%
+  pivot_longer(!var, names_to = 'stat', values_to = 'count')
+df_coefplot$model <- ifelse(grepl('^french', df_coefplot$stat), 'French', 'US')
+df_coefplot$stat <- sub('.*_', '', df_coefplot$stat)
+
+df_coefplot$est <- ifelse(df_coefplot$stat == 'est', df_coefplot$count, NA)
+df_coefplot$lower <- ifelse(df_coefplot$stat == 'lower', df_coefplot$count, NA)
+df_coefplot$upper <- ifelse(df_coefplot$stat == 'upper', df_coefplot$count, NA)
+
+df_coefplot$stat <- NULL; df_coefplot$count <- NULL
+df_coefplot <- df_coefplot %>%
+  group_by(var, model) %>%
+  summarize_all(~ max(., na.rm=T), .groups = 'drop')
+
+df_coefplot$est[df_coefplot$est == -Inf] <- NA
+df_coefplot$lower[df_coefplot$lower == -Inf] <- NA
+df_coefplot$upper[df_coefplot$upper == -Inf] <- NA
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 'CPO', 'PAPi', 'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
+
+
+df_coefplot$var[df_coefplot$var == 'Short-Term MCS'] <- 'Short-Term MCS*'
+df_coefplot$var[df_coefplot$var == 'eGFR'] <- 'eGFR**'
+df_coefplot$var[df_coefplot$var == 'PAPi'] <- 'PAPi***'
+df_coefplot$var[df_coefplot$var == 'Sodium'] <- 'Sodium**'
+
+
+
+
+df_coefplot %>%
+  ggplot(aes(x=est, 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium**', 'Albumin', 'PAPi***', 'CPO', 
+                                      'Log BNP', 'eGFR**', 'Log Bilirubin', 'Short-Term MCS*')), 
+             color=model)) +
+  geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
+  geom_vline(xintercept = 0, lty = 2, color = 'red') +
+  xlab('Effect Size') + xlim(-1.25, 1.25) +
+  scale_colour_manual(name='Model', values=c('#fd8d3c', '#bd0026'), labels = c('French-CRS', 'US-CRS')) + 
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(face='bold', size = 14, margin = margin(t=5)), 
+        axis.text.x = element_text(face='bold', size = 13, margin = margin(t=5)), 
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face='bold', size = 13, margin = margin(r=5)),
+        legend.text = element_text(size = 16),
+        legend.title = element_text(size = 16))  
 ```
 
 
@@ -916,7 +1025,7 @@ load('./Newest Models/model_xgboost_mem_final.RData')
 -------------
 
 
-# 5. Make predictions on test dataset (blocked dataset)
+# 5. Make predictions on test dataset
 
 ```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 model1_predict <- as.numeric(
@@ -959,18 +1068,18 @@ df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_
 
 # 6. Create AUC curves
 
-### ROC curve for models with no memory variables
+### ROC curve for models with no memory variables (Supplemental Appendix 5)
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='#999999', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_nomem$death6week ~ elastic_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#E69F00', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdae61', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#009E73', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#ffffbf', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='firebrick', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#abdda4', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#0072B2', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#2b83ba', add=T, quiet=T)
 title(main = 'Heart Allocation Score vs. 6 Status, 14-Day Intervals, 6-Week Death, No Memory', line = 2.5)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
@@ -978,22 +1087,22 @@ legend('bottomright', cex = 0.9, xpd = T,
                  'Gradient-Boosted Model', 
                  'French CRS',
                  'US CRS with PAPI and CPO'),
-       col = c('#999999', '#E69F00', '#009E73', 'firebrick', '#0072B2'), lwd = 2.5)
+       col = c('#d7191c', '#fdae61', '#ffffbf', '#abdda4', '#2b83ba'), lwd = 2.5)
 ```
 
 
-### ROC curve for models with all memory variables
+### ROC curve for models with all memory variables (Supplemental Appendix 5)
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='#999999', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#E69F00', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdae61', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#009E73', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#ffffbf', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='firebrick', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#abdda4', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#0072B2', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#2b83ba', add=T, quiet=T)
 title(main = 'Heart Allocation Score vs. 6 Status, 14-Day Intervals, 6-Week Death, All Memory', line = 2.5)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
@@ -1001,7 +1110,7 @@ legend('bottomright', cex = 0.9, xpd = T,
                  'Gradient-Boosted Model', 
                  'French CRS',
                  'US CRS with PAPI and CPO'),
-       col = c('#999999', '#E69F00', '#009E73', 'firebrick', '#0072B2'), lwd = 2.5)
+       col = c('#d7191c', '#fdae61', '#ffffbf', '#abdda4', '#2b83ba'), lwd = 2.5)
 ```
 
 
@@ -1021,4 +1130,59 @@ pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
 legend('bottomright', cex = 1.2, xpd = T,
       legend = c('6-Status', 'French CRS', 'US CRS'),
        col = c('#FCAE91', '#FB6A4A', '#A50F15'), lwd=3)
+```
+
+
+-------------
+
+
+# 7. Variable importance plots from gradient-boosted models/Supplement 7
+
+## Variable importance for XGBoost, No Memory
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
+importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
+importance1 <- importance1[importance1$Gain >= 0.03, ]
+
+
+p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
+
+p1 +  
+  theme_bw() + 
+  ggtitle('Feature Importance, 0.03 or Higher') +
+  scale_fill_manual(values = 'firebrick') +
+  theme(
+    legend.position = 'none',
+    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
+    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+    axis.title.y = element_text(size = 14, margin = margin(r=5)),
+    axis.text.y = element_text(size = 13, margin = margin(r=5)),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
+```
+
+
+## Variable importance for XGBoost, All Memory
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
+importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
+importance2 <- importance2[importance2$Gain >= 0.03, ]
+
+
+p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
+
+p2 +  
+  theme_bw() + 
+  ggtitle('Feature Importance, 0.03 or Higher') +
+  scale_fill_manual(values = 'firebrick') +
+  theme(
+    legend.position = 'none',
+    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
+    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+    axis.title.y = element_text(size = 14, margin = margin(r=5)),
+    axis.text.y = element_text(size = 13, margin = margin(r=5)),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
 ```
