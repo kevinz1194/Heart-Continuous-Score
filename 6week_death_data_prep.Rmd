@@ -14,9 +14,9 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 5. Create intervals (Line 841) -->
 <!-- 6. Add memory variables (Line 1075) -->
 <!-- 7. Death in 6 weeks (Line 1217) -->
-<!-- 8. Impute variables (Line 1253) -->
-<!-- 9. Generate new clinical variables (Line 1421) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1471) -->
+<!-- 8. Impute variables (Line 1258) -->
+<!-- 9. Generate new clinical variables (Line 1426) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1476) -->
 
 
 
@@ -887,6 +887,11 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
 
 ### Account for changes between intervals
 ```{r, warning=F, comment=NA, message=F}
+## Fill down status
+df_intervals <- df_intervals %>% 
+  group_by(PX_ID) %>%
+  fill(status, .direction = 'down')
+
 
 ## Fill in previous row with data
 for(i in nrow(df_intervals):2) {
@@ -1517,6 +1522,3 @@ df_intervals %>%
   select(PX_ID, interval_start, interval_stop, status, 
          systolicBP, PCWP, central_venous_pressure, cardiac_output)
 ```
-
-
-
