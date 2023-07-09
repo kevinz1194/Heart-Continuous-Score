@@ -43,6 +43,6 @@ Updated 7/8/2023: Added.
 
 ### 5. figures_unblocked.Rmd
 
-Main figures from the journal article, mostly done in the original unblocked (no 14-day interval) dataset. 
+Main figures from the journal article, mostly done in the full, unblocked (no 14-day intervals) dataset. Rows represent justification form changes. 
 
 Updated 7/9/2023: Added.   
