@@ -279,7 +279,7 @@ paste0('French-CRS Brier: ', DescTools::BrierScore(df_no_missing$death, df_no_mi
 ```
 
 
-### US-CRS
+### US-CRS c-index
 US-CRS model is obtained from Section 3 of **model_results.Rmd**
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
