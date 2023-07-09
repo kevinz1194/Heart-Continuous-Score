@@ -9,14 +9,14 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
  
 <!-- 1. Set up original modified dataset (Line 35) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 152) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 484) -->
-<!-- 4. Set up remaining clinical variables (Line 735) -->
-<!-- 5. Create intervals (Line 841) -->
-<!-- 6. Add memory variables (Line 1075) -->
-<!-- 7. Death in 6 weeks (Line 1217) -->
-<!-- 8. Impute variables (Line 1258) -->
-<!-- 9. Generate new clinical variables (Line 1426) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1476) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 480) -->
+<!-- 4. Set up remaining clinical variables (Line 731) -->
+<!-- 5. Create intervals (Line 837) -->
+<!-- 6. Add memory variables (Line 1071) -->
+<!-- 7. Death in 6 weeks (Line 1213) -->
+<!-- 8. Impute variables (Line 1254) -->
+<!-- 9. Generate new clinical variables (Line 1422) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1472) -->
 
 
 
@@ -157,7 +157,6 @@ df$JustId <- trimws(df$JustId)
 
 
 ## Read in status datasets
-df_just <- haven::read_sas('./JustFormHR.sas7bdat')
 df_just1 <- haven::read_sas('./JustFormHRStat1.sas7bdat')
 df_just2 <- haven::read_sas('./JustFormHRStat2.sas7bdat')
 df_just3 <- haven::read_sas('./JustFormHRStat3.sas7bdat')
@@ -224,9 +223,6 @@ df_just4 <- expss::drop_all_labels(df_just4)
 df_just4$CriteriaInotropeSupport4 <- df_just4$CriteriaInotropeSupport ## A rename to prevent duplicate columns
 df_just4$CriteriaInotropeSupport <- NULL
 df <- merge(df, df_just4, by = 'JustId', all.x = T, all.y = F, suffixes = c('.x', '.y'), no.dups = T)
-
-
-rm(df_just, df_just1, df_just2, df_just3, df_just4)
 ```
 
 
