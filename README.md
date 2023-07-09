@@ -12,6 +12,7 @@ Creates 14-day interval (blocked) dataset from SRTR data, including 6-week morta
 Datasets required: 
 
 **status_changes_pubsaf2303.csv** <br />
+**cand_thor.sas7bdat** <br />
 **JustFormHRStat1.sas7bdat**  <br />
 **JustFormHRStat2.sas7bdat** <br />
 **JustFormHRStat3.sas7bdat**  <br />
