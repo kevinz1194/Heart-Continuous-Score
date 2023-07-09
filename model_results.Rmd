@@ -10,10 +10,10 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 32) -->
 <!-- 2. Set up matrices for predictions (Line 132) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 583) -->
-<!-- 4. Obtain machine learning model results (Line 970) -->
-<!-- 5. Make predictions on test dataset (Line 1028) -->
-<!-- 6. Create AUC curves (Line 1069) -->
-<!-- 7. Variable importance plots from gradient-boosted models/Supplement 7 (Line 1139) -->
+<!-- 4. Obtain machine learning model results (Line 981) -->
+<!-- 5. Make predictions on test dataset (Line 1039) -->
+<!-- 6. Create AUC curves (Line 1080) -->
+<!-- 7. Variable importance plots from gradient-boosted models/Supplement 7 (Line 1150) -->
 
 
 
@@ -582,6 +582,17 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
 
 # 3. Run selected logistic regression models
 All models are run in the training datasets.
+
+
+### 6-Status Model
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model6status <- glm(formula = as.formula(
+  death6week ~ status, 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+  
+save(model6status, file = './model_6status.RData') 
+```
 
 
 ### Selected Model #1: French candidate risk score
