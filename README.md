@@ -37,7 +37,7 @@ Updated 7/8/2023: Added.
 
 Runs logistic regression models, creates predicted results, and AUC curves. 
 
-Updated 7/8/2023: Added.   
+Updated 7/9/2023: Added.   
 
 
 
