@@ -35,7 +35,7 @@ Updated 7/8/2023: Added.
 
 ### 4. model_results.Rmd
 
-Runs logistic regression models, creates predicted results, and AUC curves. 
+Runs logistic regression models, creates predicted results, AUC curves, and variable importance plots in the blocked (14-day interval) dataset. 
 
 Updated 7/9/2023: Added.   
 
