@@ -13,10 +13,10 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 4. Set up remaining clinical variables (Line 735) -->
 <!-- 5. Create intervals (Line 841) -->
 <!-- 6. Add memory variables (Line 1075) -->
-<!-- 7. Death in 6 weeks (Line 1223) -->
-<!-- 8. Impute variables (Line 1259) -->
-<!-- 9. Generate new clinical variables (Line 1427) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1477) -->
+<!-- 7. Death in 6 weeks (Line 1217) -->
+<!-- 8. Impute variables (Line 1253) -->
+<!-- 9. Generate new clinical variables (Line 1421) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1471) -->
 
 
 
@@ -1054,12 +1054,6 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
 df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
 df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F) 
 df_intervals$exception[is.na(df_intervals$exception) == T] <- '0'
-
-
-## Convert exception to exception ever
-df_intervals$exception <- df_intervals$exception_ever
-df_intervals <- df_intervals %>%
-  select(-c(exception_ever))
 ```
 
 
