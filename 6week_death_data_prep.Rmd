@@ -12,11 +12,11 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 484) -->
 <!-- 4. Set up remaining clinical variables (Line 735) -->
 <!-- 5. Create intervals (Line 841) -->
-<!-- 6. Add memory variables (Line 1072) -->
-<!-- 7. Death in 6 weeks (Line 1220) -->
-<!-- 8. Impute variables (Line 1256) -->
-<!-- 9. Generate new clinical variables (Line 1424) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1467) -->
+<!-- 6. Add memory variables (Line 1075) -->
+<!-- 7. Death in 6 weeks (Line 1223) -->
+<!-- 8. Impute variables (Line 1259) -->
+<!-- 9. Generate new clinical variables (Line 1427) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1477) -->
 
 
 
@@ -1036,26 +1036,35 @@ for(j in 1:14) {
 ### Clean up intervals
 ```{r, warning=F, comment=NA, message=F}
 ## Remove extra intervals from floor
-df_intervals <- df_intervals %>% filter(interval_start <= max_time)
+df_intervals <- df_intervals %>% 
+  group_by(PX_ID) %>% 
+  filter(interval_start <= max_time)
 
 
-### Reassign last group flags
+## Reassign last group flags
 df_intervals <- df_intervals %>% group_by(PX_ID) %>%
   mutate(
     last_group = case_when(
       row_number() == n() ~ 1,
       TRUE ~ 0)) %>%
   select(-c(max_time))
+
+
+## Clean up old time variables and string variables 
+df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
+df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F) 
+df_intervals$exception[is.na(df_intervals$exception) == T] <- '0'
+
+
+## Convert exception to exception ever
+df_intervals$exception <- df_intervals$exception_ever
+df_intervals <- df_intervals %>%
+  select(-c(exception_ever))
 ```
 
 
 ### Fix some final variables
 ```{r, warning=F, comment=NA, message=F}
-df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
-df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F) ### Clean up string variables
-df_intervals$exception[is.na(df_intervals$exception) == T] <- '0'
-
-
 ### Divide certain variables by 10 or 100
 df_intervals <- df_intervals %>% 
   mutate(BNP = as.numeric(BNP) / 100,
@@ -1103,12 +1112,6 @@ df_intervals <- df_intervals %>%
          exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever),
          temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ RVAD_ever),
          BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ exception_ever))
-
-
-## Convert exception to exception ever
-df_intervals$exception <- df_intervals$exception_ever
-df_intervals <- df_intervals %>%
-  select(-c(exception_ever))
 ```
          
 
@@ -1461,6 +1464,13 @@ df_intervals %>%
 ```
 
 
+### Save final dataset
+
+```{r, warning=F, comment=NA, message=F}
+save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
+```
+
+
 ---------------------------------
 
 
@@ -1470,17 +1480,17 @@ df_intervals %>%
 ```{r}
 sample_ids <- sample(df$PX_ID, size=10, replace=F)
 
-df <- df %>% filter(PX_ID %in% sample_ids)
-df_intervals <- df_intervals %>% filter(PX_ID %in% sample_ids)
+df_sample <- df %>% filter(PX_ID %in% sample_ids)
+df_intervals_sample <- df_intervals %>% filter(PX_ID %in% sample_ids)
 ```
 
 ```{r}
-df %>%
+df_sample %>%
   select(PX_ID, t_start, t_stop, last_group, status, systolicBP, PCWP, cardiac_output, BNP)
 ```
 
 ```{r}
-df_intervals %>%
+df_intervals_sample %>%
   select(PX_ID, interval_start, interval_stop, last_group, status, systolicBP, PCWP, cardiac_output, BNP)
 ```
 
@@ -1515,8 +1525,4 @@ df_intervals %>%
 ```
 
 
-### Save final dataset
 
-```{r, warning=F, comment=NA, message=F}
-save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
-```
