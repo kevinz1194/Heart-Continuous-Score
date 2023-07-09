@@ -14,7 +14,7 @@ authors: Kevin Zhang
 <!-- 4. Unblock dataset using final data values (Line 241) -->
 <!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 261) -->
 <!-- 6. Make post-prediction figures (Line 348) -->
-<!-- 7. Score conversion possibilities (Line 399) -->
+<!-- 7. Score conversion possibilities (Line 404) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -332,8 +332,8 @@ paste0('US-CRS Brier: ', DescTools::BrierScore(df_unblocked_no_missing$death, df
 df_sample <- df_unblocked %>%
   select(-c(last_group)) 
 
-colnames(df_unblocked) <- 
-  c('PX_ID', 't_start', 't_stop', 'status', 'last_group', 'systolicBP', 
+colnames(df_sample) <- 
+  c('PX_ID', 't_start', 't_stop', 'status', 'systolicBP', 
     'bilirubin', 'albumin', 'sodium', 'BNP', 'LVAD', 'train_test', 
     'death', 'short_MCS_French', 'short_MCS_ever', 'eGFR', 'cpo', 
     'papi', '6status_predict', 'French_CRS_predict', 'US_CRS_predict')
@@ -350,20 +350,25 @@ save(df_sample, file = './df_sample.RData')
 ## Plot calibration for US-CRS (eSupplement 6)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_unblocked %>%
+df_unblocked_calibration <- df_unblocked %>%
   ungroup() %>%
-  mutate(decile_US_CRS = ntile(model6_predict, 10)) %>%
+  mutate(decile_US_CRS = ntile(model6_predict, 10))
+df_unblocked_calibration <- df_unblocked_calibration[ ,c('decile_US_CRS', 'death', 'model6_predict')]
+df_unblocked_calibration <- subset(df_unblocked_calibration, !is.na(df_unblocked_calibration$decile_US_CRS))
+
+
+df_unblocked_calibration %>%
   group_by(decile_US_CRS) %>%
   summarise(observed = mean(as.numeric(as.character(death))),
-            model6_predict = mean(model6_predict)) %>%
+            model6_predict = mean(model6_predict, na.rm = T)) %>%
   ggplot(aes(x = model6_predict, y = observed)) +
   xlab('Predicted Values') + ylab('Observed Values') +
-  geom_point(size = 2.5) + geom_abline(linewidth = 1.2, intercept = 0, slope = 1, color = 'firebrick') + 
-  theme_bw() + 
-  theme(panel.grid.major = element_blank(), 
+  geom_point(size = 2.5) + geom_abline(linewidth = 1.2, intercept = 0, slope = 1, color = 'firebrick') +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-        axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+        axis.title.x = element_text(size = 14, margin = margin(t=5)),
+        axis.text.x = element_text(size = 13, margin = margin(t=5)),
         axis.title.y = element_text(size = 14, margin = margin(r=5)),
         axis.text.y = element_text(size = 13, margin = margin(r=5))) +
   lims(x = c(0, 0.25), y= c(0, 0.25))
