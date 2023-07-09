@@ -1,0 +1,303 @@
+---
+title: "Main Figures using Unblocked Dataset"
+output:
+  html_document:
+    toc: true
+    df_print: paged
+authors: Kevin Zhang
+---
+
+
+<!-- 1. Set up continuous dataset (Line 29) -->
+<!-- 2. Comparison of Training and Testing Datasets/Table 1 (Line 73) -->
+<!-- 3. Impute values into unblocked dataset (Line 153) -->
+<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 236) -->
+
+
+```{r, include=F, warning=F, echo=F, comment=NA}
+rm(list=ls()); invisible(gc())
+if (!require('pacman')) {install.packages('pacman')}
+library(pacman)
+pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools)
+knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
+```
+
+
+---------------------------------
+
+
+# 1. Set up continuous dataset
+Continuous dataset is obtained from Section 5 of *6week_death_data_prep.Rmd*. 
+
+
+```{r, echo=F, warning=F, comment=NA}
+load('./intervals_v16_continuous.RData')
+
+
+## Keep only relevant variables
+df <- df %>%
+  select(PX_ID, CenterId, t_start, t_stop, last_group, status,
+         systolicBP, PCWP, central_venous_pressure, cardiac_output, 
+         AST, creatinine, bilirubin, albumin, sodium, BNP, 
+         heart_rate, diastolicBP, PASP, PADP, hemoglobin, dialysis, peripheral_vascular, 
+         status, ECMO, BiVAD_no_discharge, temp_surg_LVAD, IABP, ECMO, 
+         death_flag, age, status_initial, LVAD, BiVAD, transplant)
+
+
+## Add a train-test indicator
+load('./train_ids.RData')
+df$train_test <- 'Test'
+df$train_test[df$CenterId %in% center_ids_train] <- 'Train'
+
+
+## General death; death in final status change
+df <- df %>%
+  group_by(PX_ID) %>%
+  mutate(death = case_when(
+    death_flag == '1' & transplant == '0' & last_group == '1' ~ 1,
+    TRUE ~ 0)) %>%
+  select(-c(death_flag, transplant))
+
+
+## Certain variables need to be obtained from cand_thor since demographics not used in model
+df_cand_thor <- haven::read_sas('./cand_thor.sas7bdat')
+df_cand_thor <- df_cand_thor %>% select(PX_ID, CAN_GENDER, CAN_RACE, CAN_HGT_CM, CAN_WGT_KG) %>% unique()
+df <- merge(df, df_cand_thor, by='PX_ID', all.x=T, all.y=F)
+df$bsa <- 0.007184 * (df$CAN_HGT_CM ^ 0.425) * (df$CAN_WGT_KG ^ 0.725)
+```
+
+
+---------------------------------
+
+
+# 2. Comparison of Training and Testing Datasets/Table 1
+
+Includes these initial variables at listing:
+
+- 6 Status at Listing
+- Age at Listing
+- Sex
+- Race
+- Albumin
+- Bilirubin
+- eGFR
+- Sodium
+- BNP
+- Pulmonary Systolic BP, Pulmonary Diastolic BP
+- Central Venous Pressure
+
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+df_continuous_table1 <- df %>%
+  select(PX_ID, train_test, status, age, albumin, 
+         bilirubin, creatinine, sodium, BNP, PASP, PADP, central_venous_pressure,
+         systolicBP, diastolicBP, cardiac_output, CAN_GENDER, CAN_RACE) %>%
+  group_by(PX_ID) %>%
+  filter(row_number() == 1)
+
+
+### Recreate eGFR again and fix race
+df_continuous_table1 <- df_continuous_table1 %>%
+  mutate(eGFR = case_when(
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age)) %>%
+  
+  mutate(race = case_when(
+    CAN_RACE == '8' ~ 'White',
+    CAN_RACE == '16' ~ 'Black or AA',
+    CAN_RACE == '64' ~ 'Asian',
+    CAN_RACE == '2000' ~ 'Hispanic or Latino',
+    TRUE ~ 'Other' )) 
+
+df_continuous_table1$train_test <- factor(df_continuous_table1$train_test, levels = c('Train', 'Test'))
+df_continuous_table1 <- df_continuous_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race', 
+                                           'status', 'albumin', 'bilirubin', 'eGFR',
+                                           'sodium', 'BNP', 'cardiac_output', 
+                                           'PASP', 'PADP', 'systolicBP', 'diastolicBP',
+                                           'central_venous_pressure')]
+
+
+df_continuous_table1 %>%
+  ungroup() %>%
+  tbl_summary(by = train_test, 
+              missing = 'no', 
+              statistic = all_continuous() ~ "{mean} ({sd})",
+              label = c(age ~ 'Age at Listing, mean (SD), y',
+                        CAN_GENDER ~ 'Gender, No. (%)',
+                        race ~ 'Race, No. (%)',
+                        status ~ '6-Status, No. (%)',
+                        albumin ~ 'Albumin, mean (SD), g/dL',
+                        bilirubin ~ 'Bilirubin, mean (SD), mg/dL',
+                        eGFR ~ 'eGFR, mean (SD), mL/min/1.73m2',
+                        sodium ~ 'Sodium, mean (SD), mEq/L',
+                        BNP ~ 'BNP, mean (SD), pg/mL',
+                        cardiac_output ~ 'Cardiac output, mean (SD), L/min',
+                        PASP ~ 'Pulmonary Systolic BP, mean (SD), mm Hg',
+                        PADP ~ 'Pulmonary Diastolic BP, mean (SD), mm Hg',
+                        systolicBP ~ 'Systolic BP, mean (SD), mm Hg',
+                        diastolicBP ~ 'Diastolic BP, mean (SD), mm Hg',
+                        central_venous_pressure ~ 'Central Venous Pressure, mean (SD), mm Hg')) %>%
+  modify_header(label = "**Variable**") %>%
+  add_p() %>%
+  add_overall() %>%
+  bold_labels()
+```
+
+
+---------------------------------
+
+
+# 3. Impute values into unblocked dataset
+
+### Impute using the same rules
+```{r, warning=F, comment=NA}
+df <- df %>% 
+  group_by(PX_ID) %>%
+  fill(status, .direction = 'down')
+
+df$BNP[is.na(df$BNP) & df$status == '1'] <- median(df$BNP[df$status == '1'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$status == '2'] <- median(df$BNP[df$status == '2'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$status == '3'] <- median(df$BNP[df$status == '3'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$status == '4'] <- median(df$BNP[df$status == '4'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$status == '5'] <- median(df$BNP[df$status == '5'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$status == '6'] <- median(df$BNP[df$status == '6'], na.rm=T)
+
+df <- df %>%
+  mutate(cardiac_output = ifelse((status == '4' & is.na(cardiac_output) & LVAD == '1'),  
+                                 2.5*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((status == '6' & is.na(cardiac_output) & LVAD == '1'),  
+                                 2.2*bsa, cardiac_output))
+
+
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$status == '4' & df$LVAD == '1'] <- 10
+df$PASP[is.na(df$PASP) & df$status == '4' & df$LVAD == '1'] <- 35
+df$PADP[is.na(df$PADP) & df$status == '4' & df$LVAD == '1'] <- 15
+df$PCWP[is.na(df$PCWP) & df$status == '4' & df$LVAD == '1'] <- 15
+df$systolicBP[is.na(df$systolicBP) & df$status == '4' & df$LVAD == '1'] <- 100
+df$diastolicBP[is.na(df$diastolicBP) & df$status == '4' & df$LVAD == '1'] <- 80
+
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$status == '6'] <- 12
+df$PASP[is.na(df$PASP) & df$status == '6'] <- 38
+df$PADP[is.na(df$PADP) & df$status == '6'] <- 18
+df$PCWP[is.na(df$PCWP) & df$status == '6'] <- 18
+df$systolicBP[is.na(df$systolicBP) & df$status == '6'] <- 110
+df$diastolicBP[is.na(df$diastolicBP) & df$status == '6'] <- 80
+```
+
+
+### Recreate short MCS ever, eGFR, cpo, api
+```{r, warning=F, comment=NA, fig.align='center'}
+df <- df %>%
+  mutate(ECMO_ever = case_when(ECMO == '1' ~ '1', TRUE ~ NA_character_),
+         temp_surg_ever = case_when(temp_surg_LVAD == '1' ~ '1', TRUE ~ NA_character_),
+         BiVAD_no_discharge_ever = case_when(BiVAD_no_discharge == '1' ~ '1', TRUE ~ NA_character_)) %>%
+  
+  fill(ECMO_ever, .direction = 'down') %>%
+  fill(temp_surg_ever, .direction = 'down') %>%
+  fill(BiVAD_no_discharge_ever, .direction = 'down') %>%
+  
+  mutate(short_MCS_French = 
+           case_when(
+             (ECMO == '1' & status == '1') | IABP == '1' ~ 1,
+             TRUE ~ 0)) %>% 
+  
+  mutate(short_MCS_ever = 
+           case_when(
+             ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
+             TRUE ~ 0)) %>%
+  
+ mutate(eGFR = case_when(
+    
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age)) %>%
+  
+  mutate(
+    cpo = (1/541) * cardiac_output * (((2/3)*systolicBP) + ((1/3)*diastolicBP)),
+    papi = (PASP - PADP) / central_venous_pressure)
+
+
+df$eGFR[df$dialysis == '1'] <- 0
+df$papi[df$central_venous_pressure == 0] <- 1
+df$papi[df$papi < 1 & !is.na(df$papi)] <- 1
+
+df$LVAD <- as.factor(df$LVAD)
+```
+
+
+---------------------------------
+
+
+# 4. Make predictions on unblocked dataset and calculate discrimination measurements
+
+### 6-Status
+6-Status model is obtained from Section 3 of **model_results.Rmd**
+
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+load('./model_6status.RData')
+
+model6status_predict <- predict(model6status, newdata = df, type = 'response')
+df$model6status_predict <- model6status_predict
+
+
+concordance(coxph(Surv(t_start, t_stop, death) ~ model6status_predict, data = df), timewt = 'n')
+```
+
+
+### 6-Status Brier score
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+df_no_missing <- subset(df, !is.na(df$model6status_predict))
+paste0('6-Status Brier: ', DescTools::BrierScore(df_no_missing$death, df_no_missing$model6status_predict))
+```
+
+
+### French-CRS c-index
+French-CRS model is obtained from Section 3 of **model_results.Rmd**
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+load('./model_frenchCRS.RData')
+model1_predict <- predict(model1, newdata = df, type = 'response')
+df$model1_predict <- model1_predict
+
+
+concordance(coxph(Surv(t_start, t_stop, death) ~ model1_predict, data = df), timewt = 'n')
+```
+
+
+### French-CRS Brier score
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+df_no_missing <- subset(df, !is.na(df$model1_predict))
+paste0('French-CRS Brier: ', DescTools::BrierScore(df_no_missing$death, df_no_missing$model1_predict))
+```
+
+
+### US-CRS
+US-CRS model is obtained from Section 3 of **model_results.Rmd**
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+load('./model_USCRS.RData')
+model6_predict <- predict(model6, newdata = df, type = 'response')
+df$model6_predict <- model6_predict
+
+concordance(coxph(Surv(t_start, t_stop, death) ~ model6_predict, data = df), timewt = 'n')
+```
+
+
+### US-CRS Brier score
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+df_no_missing <- subset(df, !is.na(df$model6_predict))
+
+paste0('US-CRS Brier: ', DescTools::BrierScore(df_no_missing$death, df_no_missing$model6_predict))
+```
+
+
+
