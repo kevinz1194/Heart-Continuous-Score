@@ -954,24 +954,24 @@ df_coefplot <- df_coefplot %>%
                                 'Sodium', 'Durable LVAD'))))
 
 
-df_coefplot$var[df_coefplot$var == 'Short-Term MCS'] <- 'Short-Term MCS*'
-df_coefplot$var[df_coefplot$var == 'eGFR'] <- 'eGFR**'
-df_coefplot$var[df_coefplot$var == 'PAPi'] <- 'PAPi***'
-df_coefplot$var[df_coefplot$var == 'Sodium'] <- 'Sodium**'
-
-
-
 
 df_coefplot %>%
   ggplot(aes(x=est, 
-             y=factor(var, levels = c('Durable LVAD', 'Sodium**', 'Albumin', 'PAPi***', 'CPO', 
-                                      'Log BNP', 'eGFR**', 'Log Bilirubin', 'Short-Term MCS*')), 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium', 'Albumin', 'PAPi', 'CPO', 
+                                      'Log BNP', 'eGFR', 'Log Bilirubin', 
+                                      'Short-Term MCS')), 
              color=model)) +
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = 'red') +
   xlab('Effect Size') + xlim(-1.25, 1.25) +
-  scale_colour_manual(name='Model', values=c('#fd8d3c', '#bd0026'), labels = c('French-CRS', 'US-CRS')) + 
+  scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', expression('PAPi'^'c'), 
+                             'CPO', 'Log BNP', expression('eGFR'^'b'), 'Log Bilirubin', 
+                              expression('Short-Term MCS'^'a'))) +
+  scale_colour_manual(name='Model',
+                      breaks = c('US', 'French'),
+                      values = c('#bd0026', '#fd8d3c'), 
+                      labels = c('US-CRS', 'French-CRS')) + 
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
