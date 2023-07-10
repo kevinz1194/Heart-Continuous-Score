@@ -38,6 +38,8 @@ Runs logistic regression models, creates predicted results and coefficient plots
 
 Updated 7/9/2023: Added.
 
+Updated 7/10/2023: Figure colors changed.
+
 
 ### 5. figures_unblocked.Rmd
 Figures from the full, unblocked (no 14-day intervals) dataset. Uses patient characteristics from the last justification form.
