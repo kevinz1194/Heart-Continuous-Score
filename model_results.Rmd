@@ -13,7 +13,7 @@ authors: Kevin Zhang
 <!-- 4. Obtain machine learning model results (Line 990) -->
 <!-- 5. Make predictions on test dataset (Line 1048) -->
 <!-- 6. Create AUC curves (Line 1089) -->
-<!-- 7. Variable importance plots from gradient-boosted models/eSupplement 7 (Line 1162) -->
+<!-- 7. Variable importance plots from gradient-boosted models/eSupplement 7 (Line 1160) -->
 
 
 
@@ -975,12 +975,12 @@ df_coefplot %>%
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        axis.title.x = element_text(face='bold', size = 14, margin = margin(t=5)), 
-        axis.text.x = element_text(face='bold', size = 13, margin = margin(t=5)), 
+        axis.title.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
+        axis.text.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
         axis.title.y = element_blank(),
-        axis.text.y = element_text(face='bold', size = 13, margin = margin(r=5)),
-        legend.text = element_text(size = 16),
-        legend.title = element_text(size = 16))  
+        axis.text.y = element_text(face='bold', size = 16, margin = margin(r=5)),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 18))  
 ```
 
 
@@ -1088,27 +1088,26 @@ df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_
 
 # 6. Create AUC curves
 
-### ROC curve for models with no memory variables (eSupplement 5)
+### ROC curve for models with no memory variables
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='black', print.auc=T, lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_nomem$death6week ~ elastic_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdae61', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdbe85', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#ffffbf', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#fd8d3c', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#abdda4', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#e6550d', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#2b83ba', add=T, quiet=T)
-title(main = 'Heart Allocation Score vs. 6 Status, 14-Day Intervals, 6-Week Death, No Memory', line = 2.5)
+          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#a63603', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
                  'French CRS',
                  'US CRS with PAPI and CPO'),
-       col = c('#d7191c', '#fdae61', '#ffffbf', '#abdda4', '#2b83ba'), lwd = 2.5)
+       col = c('black', '#fdbe85', '#fd8d3c', '#e6550d', '#a63603'), lwd = 2.5)
 ```
 
 
@@ -1116,23 +1115,22 @@ legend('bottomright', cex = 0.9, xpd = T,
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='#d7191c', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='black', print.auc=T, lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdae61', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdbe85', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#ffffbf', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#fd8d3c', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#abdda4', add=T, quiet=T)
+          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#e6550d', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#2b83ba', add=T, quiet=T)
-title(main = 'Heart Allocation Score vs. 6 Status, 14-Day Intervals, 6-Week Death, All Memory', line = 2.5)
+          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#a63603', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
                  'French CRS',
-                 'US CRS with PAPI and CPO'),
-       col = c('#d7191c', '#fdae61', '#ffffbf', '#abdda4', '#2b83ba'), lwd = 2.5)
+                 'US CRS'),
+       col = c('black', '#fdbe85', '#fd8d3c', '#e6550d', '#a63603'), lwd = 2.5)
 ```
 
 
