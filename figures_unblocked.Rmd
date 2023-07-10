@@ -14,7 +14,7 @@ authors: Kevin Zhang
 <!-- 4. Unblock dataset using final data values (Line 241) -->
 <!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 261) -->
 <!-- 6. Make post-prediction figures (Line 348) -->
-<!-- 7. Score conversion possibilities (Line 404) -->
+<!-- 7. Score conversion possibilities (Line 405) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -350,9 +350,10 @@ save(df_sample, file = './df_sample.RData')
 ## Plot calibration for US-CRS (eSupplement 6)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_unblocked$model6predict_c <- predict(model6, newdata = df_unblocked)
 df_unblocked_calibration <- df_unblocked %>%
   ungroup() %>%
-  mutate(decile_US_CRS = ntile(model6_predict, 10))
+  mutate(decile_US_CRS = ntile(model6predict_c, 10))
 df_unblocked_calibration <- df_unblocked_calibration[ ,c('decile_US_CRS', 'death', 'model6_predict')]
 df_unblocked_calibration <- subset(df_unblocked_calibration, !is.na(df_unblocked_calibration$decile_US_CRS))
 
