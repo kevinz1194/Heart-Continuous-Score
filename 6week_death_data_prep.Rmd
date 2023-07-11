@@ -10,13 +10,13 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 1. Set up original modified dataset (Line 35) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 152) -->
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 480) -->
-<!-- 4. Set up remaining clinical variables (Line 731) -->
+<!-- 4. Set up remaining clinical variables (Line ) -->
 <!-- 5. Create intervals (Line 837) -->
-<!-- 6. Add memory variables (Line 1071) -->
-<!-- 7. Death in 6 weeks (Line 1213) -->
-<!-- 8. Impute variables (Line 1254) -->
-<!-- 9. Generate new clinical variables (Line 1422) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1472) -->
+<!-- 6. Add memory variables (Line 1092) -->
+<!-- 7. Death in 6 weeks (Line 1234) -->
+<!-- 8. Impute variables (Line 1270) -->
+<!-- 9. Generate new clinical variables (Line 1428) -->
+<!-- 10. Sample checks between blocked and unblocked (Line 1476) -->
 
 
 
@@ -865,9 +865,25 @@ df <- df %>%
 
 ### Create 14-day intervals and interval numbers
 ```{r, warning=F, comment=NA, message=F}
-duplicate_counts <- floor(df$time / 14)
-duplicate_counts[duplicate_counts == '0'] <- 1
-row_reps <- rep(1:nrow(df), duplicate_counts)
+df_setup <- data.frame('PX_ID' = df$PX_ID,
+                       'cumulative_time' = df$t_stop,
+                       'last_group' = df$last_group,
+                       'counts' = ceiling(df$time / 14))
+df_setup$counts[df_setup$counts == 0] <- 1
+
+df_setup <- df_setup %>% 
+  group_by(PX_ID) %>%
+  mutate(cumulative_days = 14 * cumsum(counts)) %>%
+  mutate(intervals_add = case_when(
+    cumulative_days < cumulative_time ~ 1,
+    TRUE ~ 0)) %>%
+  mutate(intervals_add = max(intervals_add))
+
+df_setup$counts[df_setup$interval_add == 1] <- df_setup$counts[df_setup$interval_add == 1] + 1
+df_setup$counts[df_setup$counts == 0 & df_setup$last_group == 1] <- 1
+
+
+row_reps <- rep(1:nrow(df), df_setup$counts)
 df_intervals <- df[row_reps, ]
 
 
@@ -960,6 +976,7 @@ for(i in nrow(df_intervals):2) {
   }
 }
 
+
 ## Check changes; must check if changes in next row, since a row can be as little as 1 day- check up to 14 rows after
 for(j in 1:14) {
   for(i in 1:(nrow(df_intervals)-j)) {
@@ -1036,9 +1053,9 @@ for(j in 1:14) {
 
 ### Clean up intervals
 ```{r, warning=F, comment=NA, message=F}
-## Remove extra intervals from floor
-df_intervals <- df_intervals %>% 
-  group_by(PX_ID) %>% 
+# Remove extra intervals from floor
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
   filter(interval_start <= max_time)
 
 
@@ -1047,8 +1064,7 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
   mutate(
     last_group = case_when(
       row_number() == n() ~ 1,
-      TRUE ~ 0)) %>%
-  select(-c(max_time))
+      TRUE ~ 0))
 
 
 ## Clean up old time variables and string variables 
@@ -1274,7 +1290,15 @@ rm(df_bsa)
 * Lactate: 1 mmol/L
 * LDH: 220 U/L
 * Hemoglobin: 14.9 g/dL for males, 13.3 g/dL for females
-* BNP: median by status
+* BNP: median
+* Sodium: median
+* eGFR: 100 mL/min/1.73m^2
+* Cardiac output: 2.5 x bsa if LVAD, 2.2 x bsa else
+* CVP: 10 mm Hg if LVAD, 12 else
+* PASP/PADP: 35/15 mm Hg if LVAD, 38/18 else
+* PCWP: 15 mm Hg if LVAD, 18 else
+* Systolic/Diastolic BP: 100/80 if LVAD, 110/80 else
+* Heart rate: 85 bps
 
 
 ```{r, warning=F, comment=NA, message=F}
@@ -1283,51 +1307,33 @@ df_intervals$LDH[is.na(df_intervals$LDH)] <- 220
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'M'] <- 14.9
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'F'] <- 13.3
 
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '1'] <-
-  median(df_intervals$BNP[df_intervals$status == '1'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '2'] <-
-  median(df_intervals$BNP[df_intervals$status == '2'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '3'] <-
-  median(df_intervals$BNP[df_intervals$status == '3'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '4'] <-
-  median(df_intervals$BNP[df_intervals$status == '4'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '5'] <-
-  median(df_intervals$BNP[df_intervals$status == '5'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$status == '6'] <-
-  median(df_intervals$BNP[df_intervals$status == '6'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP)] <- median(df_intervals$BNP, na.rm=T)
+df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$BNP, na.rm=T)
 ```
 
-
-### Impute status 4 and 6 missings
 ```{r, warning=F, comment=NA, message=F}
 df_intervals <- df_intervals %>%
-  mutate(cardiac_output = ifelse((status == '4' & is.na(cardiac_output) & LVAD == '1'),  
-                                 2.5*bsa, cardiac_output)) %>%
-  mutate(cardiac_output = ifelse((status == '6' & is.na(cardiac_output) & LVAD == '1'),  
-                                 2.2*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD == '1'),  2.5*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD != '1'),  2.2*bsa, cardiac_output)) %>%
   select(-c(bsa))
 
 
-df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & 
-                                       df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 10
-df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 35
-df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 15
-df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$status == '4' & df_intervals$LVAD == '1'] <- 15
-df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$status == '4' & 
-                          df_intervals$LVAD == '1'] <- 100
-df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$status == '4' & 
-                           df_intervals$LVAD == '1'] <- 80
-df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$status == '4' & 
-                          df_intervals$LVAD == '1'] <- 8.5
+df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & df_intervals$LVAD == '1'] <- 10
+df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$LVAD == '1'] <- 35
+df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$LVAD == '1'] <- 15
+df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$LVAD == '1'] <- 15
+df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$LVAD == '1'] <- 100
+df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$LVAD == '1'] <- 80
+df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$LVAD == '1'] <- 8.5
 
 
-df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & df_intervals$status == '6'] <- 12
-df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$status == '6'] <- 38
-df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$status == '6'] <- 18
-df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$status == '6'] <- 18
-df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$status == '6'] <- 110
-df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$status == '6'] <- 80
-df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$status == '6'] <- 8.5
+df_intervals$central_venous_pressure[is.na(df_intervals$central_venous_pressure) & df_intervals$LVAD != '1'] <- 12
+df_intervals$PASP[is.na(df_intervals$PASP) & df_intervals$LVAD != '1'] <- 38
+df_intervals$PADP[is.na(df_intervals$PADP) & df_intervals$LVAD != '1'] <- 18
+df_intervals$PCWP[is.na(df_intervals$PCWP) & df_intervals$LVAD != '1'] <- 18
+df_intervals$systolicBP[is.na(df_intervals$systolicBP) & df_intervals$LVAD != '1'] <- 110
+df_intervals$diastolicBP[is.na(df_intervals$diastolicBP) & df_intervals$LVAD != '1'] <- 80
+df_intervals$heart_rate[is.na(df_intervals$heart_rate) & df_intervals$LVAD != '1'] <- 8.5
 ```
 
 
@@ -1446,16 +1452,14 @@ df_intervals <- df_intervals %>%
       (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age))
 
 df_intervals$eGFR[df_intervals$dialysis == '1'] <- 0
-
-
-df_intervals$kidney_deficit <- pmax(100-df_intervals$eGFR, 0)
+df_intervals$eGFR[is.na(df_intervals$eGFR)] <- 100
 ```
 
 
 #### Examine eGFR and kidney to check eGFR
 ```{r, warning=F, comment=NA, message=F}
 df_intervals %>%
-  select(PX_ID, creatinine, CAN_GENDER, dialysis, eGFR, kidney_deficit)
+  select(PX_ID, creatinine, CAN_GENDER, dialysis, eGFR)
 ```
 
 
