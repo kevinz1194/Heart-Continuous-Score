@@ -7,13 +7,15 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 32) -->
-<!-- 2. Set up matrices for predictions (Line 132) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 586) -->
-<!-- 4. Obtain machine learning model results (Line 990) -->
-<!-- 5. Make predictions on test dataset (Line 1048) -->
-<!-- 6. Create AUC curves (Line 1089) -->
-<!-- 7. Variable importance plots from gradient-boosted models/eSupplement 7 (Line 1160) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 34) -->
+<!-- 2. Set up matrices for predictions (Line 137) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 590) -->
+<!-- 4. Obtain machine learning model results (Line 1114) -->
+<!-- 5. Make predictions on test dataset (Line 1172) -->
+<!-- 6. Create AUC curves (Line 1213) -->
+<!-- 7. Variable importance plots from gradient-boosted models (Line 1284) -->
+<!-- 8. Create calibration plot in test dataset (Line 1345) -->
+<!-- 9. Create facet plot of 50 point score at initial listing (Line 1393) -->
 
 
 
@@ -21,7 +23,7 @@ authors: Kevin Zhang
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
-pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools)
+pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot)
 knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
 ```
 
@@ -52,7 +54,7 @@ numeric_vars <- c('interval', 'interval_start', 'interval_stop', 'age',
                   'systolicBP', 'diastolicBP', 'PASP', 'PADP', 'heart_rate', 'cardiac_output', 
                   'central_venous_pressure', 'arterial_lactate', 
                   'PCWP', 'hemoglobin', 'albumin', 'bilirubin', 'creatinine', 'sodium', 
-                  'AST', 'BNP', 'BUN', 'INR', 'LDH', 'kidney_deficit', 'eGFR',
+                  'AST', 'BNP', 'BUN', 'INR', 'LDH', 'eGFR',
                   
                   'sodium_max', 'creatinine_max', 
                   'bilirubin_max', 'albumin_max', 'arterial_lactate_max', 'BUN_max', 'AST_max', 
@@ -66,6 +68,9 @@ numeric_vars <- c('interval', 'interval_start', 'interval_stop', 'age',
 df_intervals[ ,factor_vars] <- lapply(df_intervals[ ,factor_vars], as.factor)
 df_intervals[ ,numeric_vars] <- lapply(df_intervals[ ,numeric_vars], as.numeric)
 df_intervals$death6week <- as.factor(df_intervals$death6week)
+df_intervals$age <- as.numeric(df_intervals$age)
+df_intervals$interval <- as.numeric(df_intervals$interval)
+
 
 
 ### Change specific baseline factor levels 
@@ -576,7 +581,6 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
                              
                              'Sodium_Slope', 'Creatinine_Slope', 'Bilirubin_Slope', 'Albumin_Slope', 
                              'Arterial_Lactate_Slope', 'BUN10_Slope', 'AST100_Slope', 'INR_Slope', 'BNP100_Slope')
-
 ```
 
 
@@ -811,7 +815,7 @@ model6_results <- model6_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model6_results$Variable <- c('Intercept', 'CPO', 'PAPI', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
+model6_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
                              'LVAD', 'Short MCS Ever')
 
 model6_results %>%
@@ -824,6 +828,16 @@ save(model6, file = './model_USCRS.RData')
 
 
 ### Selected Model #7: US candidate risk score with only PAPI
+
+#### Correlation between PAPi and API
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
+paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
+```
+
+
+#### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model7 <- glm(formula = as.formula(
@@ -842,10 +856,100 @@ model7_results <- model7_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model7_results$Variable <- c('Intercept', 'PAPI', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
+model7_results$Variable <- c('Intercept', 'PAPi', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
                              'LVAD', 'Short MCS Ever')
 
 model7_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### Selected Model #8: US candidate risk score with PAPi, AST, and API
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model8 <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + api + AST + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model8_results <- as.data.frame(summary(model8)$coefficients)
+model8_results$name <- rownames(model8_results)
+
+model8_results <- model8_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model8_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model8_results) <- seq(1:nrow(model8_results))
+model8_results <- model8_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model8_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 'AST',
+                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
+                             'LVAD', 'Short MCS Ever')
+
+model8_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### Selected Model #9: US candidate risk score with PAPi and API
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model9 <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model9_results <- as.data.frame(summary(model9)$coefficients)
+model9_results$name <- rownames(model9_results)
+
+model9_results <- model9_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model9_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model9_results) <- seq(1:nrow(model9_results))
+model9_results <- model9_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model9_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 
+                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
+                             'LVAD', 'Short MCS Ever')
+
+model9_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### Selected Model #10: US candidate risk score with PAPi and AST
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model10 <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + AST + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model10_results <- as.data.frame(summary(model10)$coefficients)
+model10_results$name <- rownames(model10_results)
+
+model10_results <- model10_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model10_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model10_results) <- seq(1:nrow(model10_results))
+model10_results <- model10_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model10_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'AST', 
+                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
+                             'LVAD', 'Short MCS Ever')
+
+model10_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -856,14 +960,20 @@ model7_results %>%
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_comparison <- data.frame(
-  'Model' = c('1 (French)', '2 (US-CRS with PCWP)', 
+  'Model' = c('1 (French)', 
+              '2 (US-CRS with PCWP)', 
               '3 (US-CRS with CPO and API)', 
               '4 (US-CRS with CPO Only)',
               '5 (US-CRS with API Only)',
-              '6 (US-CRS with CPO and PAPI)',
-              '7 (US-CRS with PAPI Only)'),
-  'AIC' = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model5), AIC(model6), AIC(model7)),
-  'BIC' = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model5), BIC(model6), BIC(model7)))
+              '6 (US-CRS with CPO and PAPi)',
+              '7 (US-CRS with PAPi Only)',
+              '8 (US-CRS with PAPi, API, AST)',
+              '9 (US-CRS with PAPi and API)',
+              '10 (US-CRS with PAPi and AST)'),
+  'AIC' = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model5), 
+            AIC(model6), AIC(model7), AIC(model8), AIC(model9), AIC(model10)),
+  'BIC' = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model5), 
+            BIC(model6), BIC(model7), BIC(model8), BIC(model9), BIC(model10)))
 
 model_comparison$AIC <- round(model_comparison$AIC, 3)
 model_comparison$BIC <- round(model_comparison$BIC, 3)
@@ -918,6 +1028,20 @@ df_coefplot <- df_coefplot %>%
 df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- df_coefplot$french_est[df_coefplot$var == 'eGFR'] * 10
 df_coefplot$french_est[df_coefplot$var == 'PAPi'] <- df_coefplot$french_est[df_coefplot$var == 'PAPi'] * 2
 df_coefplot$french_est[df_coefplot$var == 'Sodium'] <- df_coefplot$french_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_stderr[df_coefplot$var == 'PAPi'] <- df_coefplot$french_stderr[df_coefplot$var == 'PAPi'] * 2
+df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] * 10
+
+
+df_coefplot$us_est[df_coefplot$var == 'eGFR'] <- df_coefplot$us_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_est[df_coefplot$var == 'PAPi'] <- df_coefplot$us_est[df_coefplot$var == 'PAPi'] * 2
+df_coefplot$us_est[df_coefplot$var == 'Sodium'] <- df_coefplot$us_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_stderr[df_coefplot$var == 'PAPi'] <- df_coefplot$us_stderr[df_coefplot$var == 'PAPi'] * 2
+df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] * 10
+
 
 
 df_coefplot <- df_coefplot %>%
@@ -1088,7 +1212,7 @@ df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_
 
 # 6. Create AUC curves
 
-### ROC curve for models with no memory variables
+### ROC curve for models with no memory variables (eFigure 5)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
@@ -1111,7 +1235,7 @@ legend('bottomright', cex = 0.9, xpd = T,
 ```
 
 
-### ROC curve for models with all memory variables (eSupplement 5)
+### ROC curve for models with all memory variables (eFigure 5)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
@@ -1157,20 +1281,19 @@ legend('bottomright', cex = 1.2, xpd = T,
 -------------
 
 
-# 7. Variable importance plots from gradient-boosted models/eSupplement 7
+# 7. Variable importance plots from gradient-boosted models
 
 ## Variable importance for XGBoost, No Memory
 
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
-importance1 <- importance1[importance1$Gain >= 0.03, ]
+importance1 <- importance1[importance1$Gain > 0.04, ]
 
 
 p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
 
-p1 +  
+p1 <- p1 +  
   theme_bw() + 
-  ggtitle('Feature Importance, 0.03 or Higher') +
   scale_fill_manual(values = 'firebrick') +
   theme(
     legend.position = 'none',
@@ -1181,31 +1304,117 @@ p1 +
     axis.text.y = element_text(size = 13, margin = margin(r=5)),
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 13),
-    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
+    plot.title = element_blank()) 
 ```
 
 
 ## Variable importance for XGBoost, All Memory
 
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
-importance2 <- importance2[importance2$Gain >= 0.03, ]
+importance2 <- importance2[importance2$Gain > 0.04, ]
 
 
 p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
 
-p2 +  
+p2 <- p2 +  
   theme_bw() + 
-  ggtitle('Feature Importance, 0.03 or Higher') +
   scale_fill_manual(values = 'firebrick') +
+  ggtitle('') +
   theme(
     legend.position = 'none',
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
     axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_text(size = 14, margin = margin(r=5)),
+    axis.title.y = element_blank(),
     axis.text.y = element_text(size = 13, margin = margin(r=5)),
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 13),
-    plot.title = element_text(face = 'bold', size = 16, hjust=0.5)) 
+    plot.title = element_blank()) 
+```
+
+
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+cowplot::plot_grid(p1, p2, labels = 'AUTO')
+```
+
+
+-------------
+
+
+# 8. Create calibration plot in test dataset (Figure 3)
+
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+## Convert first to 50-point medical urgency score
+df_intervals$uscrs_predict <- predict(model6, newdata = df_intervals, type = 'response')
+df_intervals <- df_intervals %>%
+  mutate(uscrs_score = cut_number(uscrs_predict, 50, labels= FALSE))
+
+
+df_intervals$death6week <- as.numeric(as.character(df_intervals$death6week))
+df_intervals_test <- subset(df_intervals, df_intervals$train_test == 'Test')
+df_intervals_test <- df_intervals_test %>% select(death6week, uscrs_predict, uscrs_score)
+df_intervals_test <- subset(df_intervals_test, !is.na(uscrs_score))
+
+
+df_intervals_test %>%
+  mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+  group_by(decile_predictions) %>%
+  summarise(predicted = mean( uscrs_predict),
+            observed = mean(death6week),
+            mean_uscrs =  mean(uscrs_score),
+            total = n()) %>%
+  mutate(sd = sqrt(observed*(1-observed)),
+         se = sd/sqrt(total),
+         upper_ci = observed + 1.96*se,
+         lower_ci = observed - 1.96*se) %>%
+  ggplot(aes(x = predicted, y = observed)) +
+  geom_point() +  
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci, color = mean_uscrs)) + 
+  geom_abline(slope = 1, intercept = 0, color = 'black', linetype = 2) + 
+  theme_bw() +
+  scale_color_gradient(name = 'Average Medical Urgency', low = '#fdbe85', high = '#a63603') +
+  xlab('US-CRS Predicted Risk of 6-Week Mortality') + ylab('Observed Risk of 6-Week Mortality') +
+  xlim(0, 0.06) + ylim(0, 0.06) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size = 14, margin = margin(t=5)),
+        axis.text.x = element_text(size = 13, margin = margin(t=5)),
+        axis.title.y = element_text(size = 14, margin = margin(r=5)),
+        axis.text.y = element_text(size = 13, margin = margin(r=5)),
+        legend.title = element_text(size = 12, face='bold'),
+        legend.text = element_text(size = 12)) 
+```
+
+
+-------------
+
+
+# 9. Create facet plot of 50 point score at initial listing (Figure 4)
+
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_intervals$uscrs_predict <- predict(model6, newdata = df_intervals)
+
+df_intervals %>%
+  filter(!is.na(status)) %>%
+  group_by(PX_ID) %>%
+  filter(row_number()==1) %>%
+  ggplot(aes(x= uscrs_score, fill = status)) +
+  scale_fill_manual(name = 'Status', values =c('black', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026')) +
+  geom_histogram() +  
+  xlab('US-CRS Initial Score') + ylab('Count') +
+  theme_bw() + 
+    theme(
+    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+    axis.title.x = element_text(size = 15, margin = margin(t=5)), 
+    axis.text.x = element_text(size = 15, margin = margin(t=5)), 
+    axis.title.y = element_text(size = 15, margin = margin(r=5)),
+    axis.text.y = element_text(size = 14, margin = margin(r=5)),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(size = 15),
+    strip.text = element_text(size = 16, face = 'bold', color = 'black'),
+    strip.background = element_blank()) +
+  facet_wrap(~ status, labeller = as_labeller(c('1' = 'Status 1', '2' = 'Status 2', '3' = 'Status 3',
+                                                '4' = 'Status 4', '5' = 'Status 5', '6' = 'Status 6')))
+  
 ```
