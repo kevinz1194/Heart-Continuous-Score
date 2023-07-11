@@ -36,11 +36,13 @@ Updated 7/4/2023: Added.
 
 
 ### 4. model_results.Rmd
-Runs logistic regression models, creates predicted results and coefficient plots, AUC curves, and variable importance plots in the blocked (14-day interval) dataset.
+Runs logistic regression models, creates predicted results and the main figures for the blocked (14-day interval) dataset.
 
 Updated 7/9/2023: Added.
 
 Updated 7/10/2023: Figure colors changed.
+
+Updated 7/11/2023: Main figure structure revised, now includes calibration and facet plots of score.
 
 
 ### 5. figures_unblocked.Rmd
