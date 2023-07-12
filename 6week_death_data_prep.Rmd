@@ -879,7 +879,7 @@ df_setup <- df_setup %>%
     TRUE ~ 0)) %>%
   mutate(intervals_add = max(intervals_add))
 
-df_setup$counts[df_setup$interval_add == 1] <- df_setup$counts[df_setup$interval_add == 1] + 1
+df_setup$counts[df_setup$intervals_add == 1] <- df_setup$counts[df_setup$intervals_add == 1] + 1
 df_setup$counts[df_setup$counts == 0 & df_setup$last_group == 1] <- 1
 
 
