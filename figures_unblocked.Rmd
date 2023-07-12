@@ -1,5 +1,5 @@
 ---
-title: "Main Figures using Unblocked Dataset"
+title: "Calculations and Figures using Unblocked Dataset"
 output:
   html_document:
     toc: true
@@ -8,13 +8,12 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 32) -->
-<!-- 2. Comparison of training and testing Datasets/Table 1 (Line 76) -->
-<!-- 3. Impute values into dataset (Line 156) -->
-<!-- 4. Unblock dataset using final data values (Line 241) -->
-<!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 261) -->
-<!-- 6. Make post-prediction figures (Line 348) -->
-<!-- 7. Score conversion possibilities (Line 405) -->
+<!-- 1. Set up continuous dataset (Line 31) -->
+<!-- 2. Comparison of training and testing datasets (Line 78) -->
+<!-- 3. Impute values into dataset (Line 158) -->
+<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 258) -->
+<!-- 5. Make prediction figures on unblocked dataset (Line 330) -->
+<!-- 6. 50-Point Score Based on RMST (Line 359) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -59,7 +58,9 @@ df <- df %>%
   mutate(death = case_when(
     death_flag == '1' & transplant == '0' & last_group == '1' ~ 1,
     TRUE ~ 0)) %>%
-  select(-c(death_flag, transplant))
+  select(-c(death_flag, transplant)) %>%
+  
+  mutate(death = max(death))
 
 
 ## Certain variables need to be obtained from cand_thor since demographics not used in model
@@ -67,13 +68,14 @@ df_cand_thor <- haven::read_sas('./cand_thor.sas7bdat')
 df_cand_thor <- df_cand_thor %>% select(PX_ID, CAN_GENDER, CAN_RACE, CAN_HGT_CM, CAN_WGT_KG) %>% unique()
 df <- merge(df, df_cand_thor, by='PX_ID', all.x=T, all.y=F)
 df$bsa <- 0.007184 * (df$CAN_HGT_CM ^ 0.425) * (df$CAN_WGT_KG ^ 0.725)
+rm(df_cand_thor)
 ```
 
 
 ---------------------------------
 
 
-# 2. Comparison of training and testing Datasets/Table 1
+# 2. Comparison of training and testing Datasets
 
 Includes these initial variables at listing:
 
@@ -158,37 +160,38 @@ df_table1 %>%
 ### Impute using the same rules
 
 ```{r, warning=F, comment=NA}
-df <- df %>% 
+df <- df %>%
   group_by(PX_ID) %>%
   fill(status, .direction = 'down')
 
-df$BNP[is.na(df$BNP) & df$status == '1'] <- median(df$BNP[df$status == '1'], na.rm=T)
-df$BNP[is.na(df$BNP) & df$status == '2'] <- median(df$BNP[df$status == '2'], na.rm=T)
-df$BNP[is.na(df$BNP) & df$status == '3'] <- median(df$BNP[df$status == '3'], na.rm=T)
-df$BNP[is.na(df$BNP) & df$status == '4'] <- median(df$BNP[df$status == '4'], na.rm=T)
-df$BNP[is.na(df$BNP) & df$status == '5'] <- median(df$BNP[df$status == '5'], na.rm=T)
-df$BNP[is.na(df$BNP) & df$status == '6'] <- median(df$BNP[df$status == '6'], na.rm=T)
+df$hemoglobin[is.na(df$hemoglobin) & df$CAN_GENDER == 'M'] <- 14.9
+df$hemoglobin[is.na(df$hemoglobin) & df$CAN_GENDER == 'F'] <- 13.3
+
+df$BNP[is.na(df$BNP)] <- median(df$BNP, na.rm=T)
+df$sodium[is.na(df$sodium)] <- median(df$BNP, na.rm=T)
 
 df <- df %>%
-  mutate(cardiac_output = ifelse((status == '4' & is.na(cardiac_output) & LVAD == '1'),  
-                                 2.5*bsa, cardiac_output)) %>%
-  mutate(cardiac_output = ifelse((status == '6' & is.na(cardiac_output) & LVAD == '1'),  
-                                 2.2*bsa, cardiac_output))
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD == '1'),  2.5*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD != '1'),  2.2*bsa, cardiac_output)) %>%
+  select(-c(bsa))
 
 
-df$central_venous_pressure[is.na(df$central_venous_pressure) & df$status == '4' & df$LVAD == '1'] <- 10
-df$PASP[is.na(df$PASP) & df$status == '4' & df$LVAD == '1'] <- 35
-df$PADP[is.na(df$PADP) & df$status == '4' & df$LVAD == '1'] <- 15
-df$PCWP[is.na(df$PCWP) & df$status == '4' & df$LVAD == '1'] <- 15
-df$systolicBP[is.na(df$systolicBP) & df$status == '4' & df$LVAD == '1'] <- 100
-df$diastolicBP[is.na(df$diastolicBP) & df$status == '4' & df$LVAD == '1'] <- 80
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$LVAD == '1'] <- 10
+df$PASP[is.na(df$PASP) & df$LVAD == '1'] <- 35
+df$PADP[is.na(df$PADP) & df$LVAD == '1'] <- 15
+df$PCWP[is.na(df$PCWP) & df$LVAD == '1'] <- 15
+df$systolicBP[is.na(df$systolicBP) & df$LVAD == '1'] <- 100
+df$diastolicBP[is.na(df$diastolicBP) & df$LVAD == '1'] <- 80
+df$heart_rate[is.na(df$heart_rate) & df$LVAD == '1'] <- 8.5
 
-df$central_venous_pressure[is.na(df$central_venous_pressure) & df$status == '6'] <- 12
-df$PASP[is.na(df$PASP) & df$status == '6'] <- 38
-df$PADP[is.na(df$PADP) & df$status == '6'] <- 18
-df$PCWP[is.na(df$PCWP) & df$status == '6'] <- 18
-df$systolicBP[is.na(df$systolicBP) & df$status == '6'] <- 110
-df$diastolicBP[is.na(df$diastolicBP) & df$status == '6'] <- 80
+
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$LVAD != '1'] <- 12
+df$PASP[is.na(df$PASP) & df$LVAD != '1'] <- 38
+df$PADP[is.na(df$PADP) & df$LVAD != '1'] <- 18
+df$PCWP[is.na(df$PCWP) & df$LVAD != '1'] <- 18
+df$systolicBP[is.na(df$systolicBP) & df$LVAD != '1'] <- 110
+df$diastolicBP[is.na(df$diastolicBP) & df$LVAD != '1'] <- 80
+df$heart_rate[is.na(df$heart_rate) & df$LVAD != '1'] <- 8.5
 ```
 
 
@@ -228,37 +231,31 @@ df <- df %>%
 
 
 df$eGFR[df$dialysis == '1'] <- 0
+df$eGFR[is.na(df$eGFR)] <- 100
+
 df$papi[df$central_venous_pressure == 0] <- 1
 df$papi[df$papi < 1 & !is.na(df$papi)] <- 1
 
 df$LVAD <- as.factor(df$LVAD)
-```
 
 
----------------------------------
+## Remove 0-time blocks
+df <- subset(df, df$t_start != df$t_stop) 
+df$last_group <- NULL
 
 
-# 4. Unblock dataset using final data value
-To create an unblocked dataset, using 0 for starting time, and values in last block.
-
-
-```{r, warning=F, comment=NA, fig.align='center'}
-### Keep only relevant variables
 df <- df %>%
   group_by(PX_ID) %>%
-  select(PX_ID, t_start, t_stop, status, last_group, systolicBP, bilirubin, albumin, sodium, BNP, LVAD,
-         train_test, death, short_MCS_French, short_MCS_ever, eGFR, cpo, papi)
-
-df_unblocked <- subset(df, df$last_group == '1')
-df_unblocked$t_start <- 0
-df_unblocked$t_stop[df_unblocked$t_stop == 0] <- 1
+  mutate(death = case_when(
+    death == '1' & row_number() == n() ~ 1,
+    TRUE ~ 0))
 ```
 
 
 ---------------------------------
 
 
-# 5. Make predictions on unblocked dataset and calculate discrimination measurements
+# 4. Make predictions on unblocked dataset and calculate discrimination measurements
 
 ### 6-Status
 6-Status model is obtained from Section 3 of **model_results.Rmd**
@@ -267,19 +264,19 @@ df_unblocked$t_stop[df_unblocked$t_stop == 0] <- 1
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_6status.RData')
 
-model6status_predict <- predict(model6status, newdata = df_unblocked, type = 'response')
-df_unblocked$model6status_predict <- model6status_predict
+df_model6 <- df %>% select(PX_ID, t_start, t_stop, death, status)
+df_model6$predict <- predict(model6status, newdata = df_model6, type = 'response')
 
 
-concordance(coxph(Surv(t_start, t_stop, death) ~ model6status_predict, data = df_unblocked), timewt = 'n')
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model6), timewt = 'n')
 ```
 
 
 ### 6-Status Brier score
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-df_unblocked_no_missing <- subset(df_unblocked, !is.na(df_unblocked$model6status_predict))
-paste0('6-Status Brier: ', DescTools::BrierScore(df_unblocked_no_missing$death, df_unblocked_no_missing$model6status_predict))
+df_model6 <- subset(df_model6, !is.na(df_model6$predict))
+paste0('6-Status Brier: ', DescTools::BrierScore(df_model6$death, df_model6$predict))
 ```
 
 
@@ -288,19 +285,20 @@ French-CRS model is obtained from Section 3 of **model_results.Rmd**
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_frenchCRS.RData')
-model1_predict <- predict(model1, newdata = df_unblocked, type = 'response')
-df_unblocked$model1_predict <- model1_predict
+
+df_model1 <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French, bilirubin, eGFR, BNP)
+df_model1$predict <- predict(model1, newdata = df_model1, type = 'response')
 
 
-concordance(coxph(Surv(t_start, t_stop, death) ~ model1_predict, data = df_unblocked), timewt = 'n')
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model1), timewt = 'n')
 ```
 
 
 ### French-CRS Brier score
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-df_unblocked_no_missing <- subset(df_unblocked, !is.na(df_unblocked$model1_predict))
-paste0('French-CRS Brier: ', DescTools::BrierScore(df_unblocked_no_missing$death, df_unblocked_no_missing$model1_predict))
+df_model1 <- subset(df_model1, !is.na(df_model1$predict))
+paste0('6-Status Brier: ', DescTools::BrierScore(df_model1$death, df_model1$predict))
 ```
 
 
@@ -309,85 +307,41 @@ US-CRS model is obtained from Section 3 of **model_results.Rmd**
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_USCRS.RData')
-model6_predict <- predict(model6, newdata = df_unblocked, type = 'response')
-df_unblocked$model6_predict <- model6_predict
 
-concordance(coxph(Surv(t_start, t_stop, death) ~ model6_predict, data = df_unblocked), timewt = 'n')
+df_model6 <- df %>% select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
+                           bilirubin, eGFR, sodium, BNP, LVAD, short_MCS_ever)
+df_model6$predict <- predict(model6, newdata = df_model6, type = 'response')
+
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model6), timewt = 'n')
 ```
 
 
 ### US-CRS Brier score
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-df_unblocked_no_missing <- subset(df_unblocked, !is.na(df_unblocked$model6_predict))
-
-paste0('US-CRS Brier: ', DescTools::BrierScore(df_unblocked_no_missing$death, df_unblocked_no_missing$model6_predict))
-```
-
-
-
-### Save a sample for extraction
-
-```{r, warning=F, echo=F, message=F, comment=NA}
-df_sample <- df_unblocked %>%
-  select(-c(last_group)) 
-
-colnames(df_sample) <- 
-  c('PX_ID', 't_start', 't_stop', 'status', 'systolicBP', 
-    'bilirubin', 'albumin', 'sodium', 'BNP', 'LVAD', 'train_test', 
-    'death', 'short_MCS_French', 'short_MCS_ever', 'eGFR', 'cpo', 
-    'papi', '6status_predict', 'French_CRS_predict', 'US_CRS_predict')
-
-save(df_sample, file = './df_sample.RData')
+df_model6 <- subset(df_model6, !is.na(df_model6$predict))
+paste0('6-Status Brier: ', DescTools::BrierScore(df_model6$death, df_model6$predict))
 ```
 
 
 ---------------------------------
 
 
-# 6. Make post-prediction figures
-
-## Plot calibration for US-CRS (eSupplement 6)
-
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_unblocked$model6predict_c <- predict(model6, newdata = df_unblocked)
-df_unblocked_calibration <- df_unblocked %>%
-  ungroup() %>%
-  mutate(decile_US_CRS = ntile(model6predict_c, 10))
-df_unblocked_calibration <- df_unblocked_calibration[ ,c('decile_US_CRS', 'death', 'model6_predict')]
-df_unblocked_calibration <- subset(df_unblocked_calibration, !is.na(df_unblocked_calibration$decile_US_CRS))
+# 5. Make prediction figures on unblocked dataset
 
 
-df_unblocked_calibration %>%
-  group_by(decile_US_CRS) %>%
-  summarise(observed = mean(as.numeric(as.character(death))),
-            model6_predict = mean(model6_predict, na.rm = T)) %>%
-  ggplot(aes(x = model6_predict, y = observed)) +
-  xlab('Predicted Values') + ylab('Observed Values') +
-  geom_point(size = 2.5) + geom_abline(linewidth = 1.2, intercept = 0, slope = 1, color = 'firebrick') +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.title.x = element_text(size = 14, margin = margin(t=5)),
-        axis.text.x = element_text(size = 13, margin = margin(t=5)),
-        axis.title.y = element_text(size = 14, margin = margin(r=5)),
-        axis.text.y = element_text(size = 13, margin = margin(r=5))) +
-  lims(x = c(0, 0.25), y= c(0, 0.25))
-```
-
-
-## Boxplot of predicted risk by status (Figure 3)
+## Boxplot of predicted risk by status 
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_unblocked_no_missing <- subset(df_unblocked, !is.na(df_unblocked$status))
+df_boxplot <- subset(df_model6, !is.na(df_model6$status))
 
 
-df_unblocked_no_missing %>%
-  ggplot(aes(y = model6_predict, x = status, color = factor(status))) +
+df_boxplot %>%
+  ggplot(aes(y = predict, x = status, color = factor(status))) +
   geom_boxplot() +
   xlab('') + ylab('Predicted Risk from US-CRS') + labs(color = 'Status') +
   theme_bw() + 
-  scale_color_brewer(palette='Reds') +
+  scale_color_manual(values = c('black', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026')) +
   theme(
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
@@ -402,38 +356,18 @@ df_unblocked_no_missing %>%
 ---------------------------------
 
 
-# 7. Score conversion possibilities
-
-
-## Find 50-point percentile cutoffs based on log-odds on entire dataset
+# 6. 50-Point Score Based on RMST
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-cutoffs <- quantile(model6_predict, probs = seq(0, 1, length.out = 50), na.rm = T)
-cutoffs <- data.frame(Score = 1:50, RiskCutoff = cutoffs)
-cutoffs$RiskCutoff <- round(cutoffs$RiskCutoff, 4)
-rownames(cutoffs) <- NULL
-
-
-cutoffs %>%
-  kable(align=c('c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
-
-
-write.csv(cutoffs, file = './cutoffs.csv')
-```
-
-
-## Plot 50-Point Score Based on 1-Year RMST for US-CRS model (eSupplement 8)
-
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-model6_rmst <- df_unblocked
+model6_rmst <- df_model6
+model6_rmst <- subset(model6_rmst, model6_rmst$t_start <= 365)
 model6_rmst$t_stop[model6_rmst$t_stop > 365] <- 365
+
 
 model6_rmst <- model6_rmst %>% 
   group_by(PX_ID) %>%
   mutate(time_diff = t_stop - t_start) %>%
-  mutate(product = time_diff * (1-model6_predict)) 
+  mutate(product = time_diff * (1 - predict)) 
 
 model6_rmst <- aggregate(model6_rmst$product, by=list(model6_rmst$PX_ID), FUN=sum)
 colnames(model6_rmst) <- c('PX_ID', 'rmst')
@@ -445,7 +379,7 @@ model6_rmst %>%
   ggplot(aes(x = score)) +
   geom_histogram(fill = 'firebrick') +
   theme_bw() + 
-  xlab('50-Point Score') + ylab('Count') +
+  xlab('50-Point Score Based on 1-Year RMST') + ylab('Count') +
   theme(
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
