@@ -1298,7 +1298,7 @@ rm(df_bsa)
 * PASP/PADP: 35/15 mm Hg if LVAD, 38/18 else
 * PCWP: 15 mm Hg if LVAD, 18 else
 * Systolic/Diastolic BP: 100/80 if LVAD, 110/80 else
-* Heart rate: 85 bps
+* Heart rate: 85 bpm
 
 
 ```{r, warning=F, comment=NA, message=F}
