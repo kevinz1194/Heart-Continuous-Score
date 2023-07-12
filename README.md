@@ -46,6 +46,8 @@ Updated 7/11/2023: Main figure structure revised, now includes calibration and f
 
 
 ### 5. figures_unblocked.Rmd
-Figures from the full, unblocked (no 14-day intervals) dataset. Uses patient characteristics from the last justification form.
+Figures from the full, unblocked (no 14-day intervals) dataset. 
 
 Updated 7/9/2023: Added.
+
+Updted 7/11/2023: Unblocking method changed to every justification form change.
