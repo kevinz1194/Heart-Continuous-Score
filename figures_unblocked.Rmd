@@ -8,12 +8,12 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line ) -->
-<!-- 2. Comparison of training and testing datasets (Line ) -->
-<!-- 3. Impute values into dataset (Line ) -->
-<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line ) -->
-<!-- 5. Make prediction figures on unblocked dataset (Line ) -->
-<!-- 6. 50-Point Score Based on RMST (Line ) -->
+<!-- 1. Set up continuous dataset (Line 31) -->
+<!-- 2. Comparison of training and testing datasets (Line 78) -->
+<!-- 3. Impute values into dataset (Line 175) -->
+<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 275) -->
+<!-- 5. Make prediction figures on unblocked dataset (Line 347) -->
+<!-- 6. 50-Point Score Based on RMST (Line 376) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
