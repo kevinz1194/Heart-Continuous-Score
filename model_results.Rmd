@@ -13,9 +13,9 @@ authors: Kevin Zhang
 <!-- 4. Obtain machine learning model results (Line 1114) -->
 <!-- 5. Make predictions on test dataset (Line 1172) -->
 <!-- 6. Create AUC curves (Line 1213) -->
-<!-- 7. Variable importance plots from gradient-boosted models (Line 1284) -->
-<!-- 8. Create calibration plot in test dataset (Line 1345) -->
-<!-- 9. Create facet plot of 50 point score at initial listing (Line 1393) -->
+<!-- 7. Variable importance plots from gradient-boosted models (Line 1295) -->
+<!-- 8. Create calibration plot in test dataset (Line 1356) -->
+<!-- 9. Create facet plot of 50 point score at initial listing (Line 1404) -->
 
 
 
@@ -1087,14 +1087,14 @@ df_coefplot %>%
              color=model)) +
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
-  geom_vline(xintercept = 0, lty = 2, color = 'red') +
-  xlab('Effect Size') + xlim(-1.25, 1.25) +
+  geom_vline(xintercept = 0, lty = 2, color = '#880d1e') +
+  xlab('Log-Odds') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', expression('PAPi'^'c'), 
                              'CPO', 'Log BNP', expression('eGFR'^'b'), 'Log Bilirubin', 
                               expression('Short-Term MCS'^'a'))) +
   scale_colour_manual(name='Model',
                       breaks = c('US', 'French'),
-                      values = c('#bd0026', '#fd8d3c'), 
+                      values = c('#880d1e', '#3f88c5'), 
                       labels = c('US-CRS', 'French-CRS')) + 
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
@@ -1216,22 +1216,27 @@ df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='black', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
+          lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_nomem$death6week ~ elastic_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdbe85', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.45, smooth=T, lwd=2.5, col='wheat3', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_nomem_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#fd8d3c', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#e6550d', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#a63603', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
                  'French CRS',
                  'US CRS with PAPI and CPO'),
-       col = c('black', '#fdbe85', '#fd8d3c', '#e6550d', '#a63603'), lwd = 2.5)
+       col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
 
 
@@ -1239,22 +1244,26 @@ legend('bottomright', cex = 0.9, xpd = T,
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='black', print.auc=T, lwd=2.5, quiet=T)
+          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no', lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#fdbe85', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',  
+          print.auc.y=0.45, smooth=T, lwd=2.5, col='wheat3', add=T, quiet=T)
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#fd8d3c', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no', 
+          print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.35, smooth=T, lwd=2.5, col='#e6550d', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.30, smooth=T, lwd=2.5, col='#a63603', add=T, quiet=T)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
                  'French CRS',
                  'US CRS'),
-       col = c('black', '#fdbe85', '#fd8d3c', '#e6550d', '#a63603'), lwd = 2.5)
+       col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
 
 
@@ -1262,19 +1271,21 @@ legend('bottomright', cex = 0.9, xpd = T,
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=10, fig.width=10, results='hide'}
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>',
-          plot=T, col='#FCAE91', print.auc=T,
+          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
           lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
           print.thres.cex = 1.2, 
           print.thres.pattern= "Status%2.f",
           print.auc.cex = 1.2,
           legacy.axes=T)
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.45, smooth=T, lwd=2.5, col='#FB6A4A', add=T, quiet=T, print.auc.cex = 1.2)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
-          plot=T, print.auc=T, print.auc.y=0.40, smooth=T, lwd=2.5, col='#A50F15', add=T, quiet=T, print.auc.cex = 1.2)
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
 legend('bottomright', cex = 1.2, xpd = T,
       legend = c('6-Status', 'French CRS', 'US CRS'),
-       col = c('#FCAE91', '#FB6A4A', '#A50F15'), lwd=3)
+       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=3)
 ```
 
 
@@ -1294,7 +1305,7 @@ p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
 
 p1 <- p1 +  
   theme_bw() + 
-  scale_fill_manual(values = 'firebrick') +
+  scale_fill_manual(values = '#880d1e') +
   theme(
     legend.position = 'none',
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -1319,7 +1330,7 @@ p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
 
 p2 <- p2 +  
   theme_bw() + 
-  scale_fill_manual(values = 'firebrick') +
+  scale_fill_manual(values = '#880d1e') +
   ggtitle('') +
   theme(
     legend.position = 'none',
@@ -1360,7 +1371,7 @@ df_intervals_test <- subset(df_intervals_test, !is.na(uscrs_score))
 df_intervals_test %>%
   mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
   group_by(decile_predictions) %>%
-  summarise(predicted = mean( uscrs_predict),
+  summarise(predicted = mean(uscrs_predict),
             observed = mean(death6week),
             mean_uscrs =  mean(uscrs_score),
             total = n()) %>%
@@ -1369,11 +1380,11 @@ df_intervals_test %>%
          upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se) %>%
   ggplot(aes(x = predicted, y = observed)) +
-  geom_point() +  
+  geom_point(aes(color = mean_uscrs)) +  
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci, color = mean_uscrs)) + 
   geom_abline(slope = 1, intercept = 0, color = 'black', linetype = 2) + 
   theme_bw() +
-  scale_color_gradient(name = 'Average Medical Urgency', low = '#fdbe85', high = '#a63603') +
+  scale_color_gradient(name = 'Average Medical Urgency', low = '#3f88c5', high = '#880d1e') +
   xlab('US-CRS Predicted Risk of 6-Week Mortality') + ylab('Observed Risk of 6-Week Mortality') +
   xlim(0, 0.06) + ylim(0, 0.06) +
   theme(panel.grid.major = element_blank(),
@@ -1400,8 +1411,8 @@ df_intervals %>%
   group_by(PX_ID) %>%
   filter(row_number()==1) %>%
   ggplot(aes(x= uscrs_score, fill = status)) +
-  scale_fill_manual(name = 'Status', values =c('black', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026')) +
-  geom_histogram() +  
+  scale_fill_manual(name = 'Status', values =c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
+  geom_histogram(binwidth = 2) +  
   xlab('US-CRS Initial Score') + ylab('Count') +
   theme_bw() + 
     theme(
