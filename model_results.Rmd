@@ -1411,7 +1411,7 @@ df_intervals %>%
   group_by(PX_ID) %>%
   filter(row_number()==1) %>%
   ggplot(aes(x= uscrs_score, fill = status)) +
-  scale_fill_manual(name = 'Status', values =c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
+  scale_fill_manual(name = 'Status', values = c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
   geom_histogram(binwidth = 2) +  
   xlab('US-CRS Initial Score') + ylab('Count') +
   theme_bw() + 
@@ -1427,5 +1427,4 @@ df_intervals %>%
     strip.background = element_blank()) +
   facet_wrap(~ status, labeller = as_labeller(c('1' = 'Status 1', '2' = 'Status 2', '3' = 'Status 3',
                                                 '4' = 'Status 4', '5' = 'Status 5', '6' = 'Status 6')))
-  
 ```
