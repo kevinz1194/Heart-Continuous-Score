@@ -52,4 +52,6 @@ Figures from the full, unblocked (no 14-day intervals) dataset.
 
 Updated 7/9/2023: Added.
 
-Updted 7/11/2023: Unblocking method changed to every justification form change.
+Updated 7/11/2023: Unblocking method changed to every justification form change.
+
+Updated 7/13/2023: Colors changed.
