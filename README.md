@@ -44,6 +44,8 @@ Updated 7/10/2023: Figure colors changed.
 
 Updated 7/11/2023: Main figure structure revised, now includes calibration and facet plots of score.
 
+Updated 7/13/2023: Colors changed, confidence intervals added.
+
 
 ### 5. figures_unblocked.Rmd
 Figures from the full, unblocked (no 14-day intervals) dataset. 
