@@ -8,12 +8,12 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 31) -->
-<!-- 2. Comparison of training and testing datasets (Line 78) -->
-<!-- 3. Impute values into dataset (Line 158) -->
-<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 258) -->
-<!-- 5. Make prediction figures on unblocked dataset (Line 330) -->
-<!-- 6. 50-Point Score Based on RMST (Line 359) -->
+<!-- 1. Set up continuous dataset (Line ) -->
+<!-- 2. Comparison of training and testing datasets (Line ) -->
+<!-- 3. Impute values into dataset (Line ) -->
+<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line ) -->
+<!-- 5. Make prediction figures on unblocked dataset (Line ) -->
+<!-- 6. 50-Point Score Based on RMST (Line ) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -75,7 +75,7 @@ rm(df_cand_thor)
 ---------------------------------
 
 
-# 2. Comparison of training and testing Datasets
+# 2. Comparison of training and testing datasets
 
 Includes these initial variables at listing:
 
@@ -90,18 +90,20 @@ Includes these initial variables at listing:
 - BNP
 - Pulmonary Systolic BP, Pulmonary Diastolic BP
 - Central Venous Pressure
+- CPO
+- API
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 df_table1 <- df %>%
-  select(PX_ID, train_test, status, age, albumin, 
+  select(PX_ID, train_test, status, age, albumin,
          bilirubin, creatinine, sodium, BNP, PASP, PADP, central_venous_pressure,
-         systolicBP, diastolicBP, cardiac_output, CAN_GENDER, CAN_RACE) %>%
+         systolicBP, diastolicBP, cardiac_output, CAN_GENDER, CAN_RACE, dialysis) %>%
   group_by(PX_ID) %>%
   filter(row_number() == 1)
 
 
-### Recreate eGFR again and fix race
+### Recreate eGFR and race
 df_table1 <- df_table1 %>%
   mutate(eGFR = case_when(
     CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
@@ -117,12 +119,25 @@ df_table1 <- df_table1 %>%
     CAN_RACE == '2000' ~ 'Hispanic or Latino',
     TRUE ~ 'Other' )) 
 
+
+### Recreate CPO and API
+df_table1 <- df_table1 %>%   
+  mutate(
+    cpo = (1/541) * cardiac_output * (((2/3)*systolicBP) + ((1/3)*diastolicBP)),
+    papi = (PASP - PADP) / central_venous_pressure)
+
+df_table1$eGFR[df_table1$dialysis == '1'] <- 0
+df_table1$papi[df_table1$central_venous_pressure == 0] <- 1
+df_table1$papi[df_table1$papi < 1 & !is.na(df_table1$papi)] <- 1
+
+
+
 df_table1$train_test <- factor(df_table1$train_test, levels = c('Train', 'Test'))
 df_table1 <- df_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race', 
                                            'status', 'albumin', 'bilirubin', 'eGFR',
                                            'sodium', 'BNP', 'cardiac_output', 
                                            'PASP', 'PADP', 'systolicBP', 'diastolicBP',
-                                           'central_venous_pressure')]
+                                           'central_venous_pressure', 'cpo', 'papi')]
 
 
 df_table1 %>%
@@ -144,7 +159,9 @@ df_table1 %>%
                         PADP ~ 'Pulmonary Diastolic BP, mean (SD), mm Hg',
                         systolicBP ~ 'Systolic BP, mean (SD), mm Hg',
                         diastolicBP ~ 'Diastolic BP, mean (SD), mm Hg',
-                        central_venous_pressure ~ 'Central Venous Pressure, mean (SD), mm Hg')) %>%
+                        central_venous_pressure ~ 'Central Venous Pressure, mean (SD), mm Hg',
+                        cpo ~ 'Cardiac Power Output, mean (SD), watts',
+                        papi ~ 'Pulmonary Artery Pulsatility Index, mean (SD)')) %>%
   modify_header(label = "**Variable**") %>%
   add_p() %>%
   add_overall() %>%
@@ -341,7 +358,7 @@ df_boxplot %>%
   geom_boxplot() +
   xlab('') + ylab('Predicted Risk from US-CRS') + labs(color = 'Status') +
   theme_bw() + 
-  scale_color_manual(values = c('black', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026')) +
+  scale_color_manual(values = c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
   theme(
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
@@ -377,7 +394,7 @@ colnames(model6_rmst) <- c('PX_ID', 'rmst')
 model6_rmst$score <- 50*(model6_rmst$rmst /365)
 model6_rmst %>%
   ggplot(aes(x = score)) +
-  geom_histogram(fill = 'firebrick') +
+  geom_histogram(fill = '#880d1e') +
   theme_bw() + 
   xlab('50-Point Score Based on 1-Year RMST') + ylab('Count') +
   theme(
