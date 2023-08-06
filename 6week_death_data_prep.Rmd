@@ -1331,8 +1331,8 @@ df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER
 
 df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'BNP'] <- 
   median(df_intervals$BNP[df_intervals$BNP_Type == 'BNP'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'BNP'] <- 
-  median(df_intervals$BNP[df_intervals$BNP_Type == 'BNP'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'NT Pro BNP'] <- 
+  median(df_intervals$BNP[df_intervals$BNP_Type == 'NT Pro BNP'], na.rm=T)
 df_intervals$BNP[is.na(df_intervals$BNP) & is.na(df_intervals$BNP)] <- 
   median(df_intervals$BNP[is.na(df_intervals$BNP)], na.rm=T)
 
