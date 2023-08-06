@@ -7,16 +7,17 @@ output:
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
  
-<!-- 1. Set up original modified dataset (Line 35) -->
-<!-- 2. Merge with status justification datasets and create variables (Line 152) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 480) -->
-<!-- 4. Set up remaining clinical variables (Line ) -->
-<!-- 5. Create intervals (Line 837) -->
-<!-- 6. Add memory variables (Line 1092) -->
-<!-- 7. Death in 6 weeks (Line 1234) -->
-<!-- 8. Impute variables (Line 1270) -->
-<!-- 9. Generate new clinical variables (Line 1428) -->
-<!-- 10. Sample checks between blocked and unblocked (Line 1476) -->
+<!-- 1. Set up original modified dataset (Line 36) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 154) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
+<!-- 4. Set up remaining clinical variables (Line 733) -->
+<!-- 5. Add in BNP type (Line 839) -->
+<!-- 6. Create intervals (Line 856) -->
+<!-- 7. Add memory variables (Line 1113) -->
+<!-- 8. Death in 6 weeks (Line 1255) -->
+<!-- 9. Impute variables (Line 1292) -->
+<!-- 10. Generate new clinical variables (Line 1457) -->
+<!-- 11. Sample checks between blocked and unblocked (Line 1505) -->
 
 
 
@@ -25,7 +26,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr)
-knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -33,6 +34,7 @@ knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
 
 
 # 1. Set up original modified dataset
+
 The starting dataset (*status_changes_pubsaf2303*) is from https://github.com/kevinlazenby/heart_data_pipeline. <br>
 This dataset is checked against the most recent SRTR code in the later sections. As of writing, this was 2023 Q1 data.
 
@@ -834,7 +836,24 @@ df <- df %>% select(-c(JustId, events,
 ---------------------------------
 
 
-# 5. Create intervals
+# 5. Add in BNP type
+
+```{r, warning=F, comment=NA, message=F}
+df_riskstrat <- haven::read_sas('./RiskStratDataHR.sas7bdat')
+df_riskstrat <- df_riskstrat %>% select(px_id, HrSevFailNtBnpType) %>%
+  filter(HrSevFailNtBnpType != '')
+
+colnames(df_riskstrat) <- c('PX_ID', 'BNP_Type')
+
+
+df <- merge(df, df_riskstrat, by = 'PX_ID', all.x = T, all.y = F)
+```
+
+
+---------------------------------
+
+
+# 6. Create intervals
 
 ### Save non-interval data
 ```{r, warning=F, comment=NA, message=F}
@@ -922,6 +941,7 @@ for(i in nrow(df_intervals):2) {
     
     df_intervals$sodium[i] <- df_intervals$sodium[i-1]
     df_intervals$BNP[i] <- df_intervals$BNP[i-1]
+    df_intervals$BNP_Type[i] <- df_intervals$BNP_Type[i-1]
     df_intervals$heart_rate[i] <- df_intervals$heart_rate[i-1]
     df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i-1]
     df_intervals$PASP[i] <- df_intervals$PASP[i-1]
@@ -997,6 +1017,7 @@ for(j in 1:14) {
       
       df_intervals$sodium[i] <- df_intervals$sodium[i+j]
       df_intervals$BNP[i] <- df_intervals$BNP[i+j]
+      df_intervals$BNP_Type[i] <- df_intervals$BNP_Type[i+j]
       df_intervals$heart_rate[i] <- df_intervals$heart_rate[i+j]
       df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i+j]
       df_intervals$PASP[i] <- df_intervals$PASP[i+j]
@@ -1089,7 +1110,7 @@ df_intervals <- df_intervals %>%
 ---------------------------------
 
 
-# 6. Add memory variables
+# 7. Add memory variables
 
 ### Treatments: ever on?
 ```{r, warning=F, comment=NA, message=F}
@@ -1231,7 +1252,7 @@ df_intervals <- df_intervals %>%
 ---------------------------------
 
 
-# 7. Death in 6 weeks
+# 8. Death in 6 weeks
 
 ### Create variable
 ```{r, warning=F, comment=NA, message=F}
@@ -1264,10 +1285,11 @@ df_intervals <- df_intervals %>% select(-c(death_flag, death_time, deathdifferen
 ```
 
 
+
 ---------------------------------
 
 
-# 8. Impute variables 
+# 9. Impute variables 
 
 ### Add in weight, height, and gender for body surface area
 ```{r, warning=F, comment=NA, message=F}
@@ -1290,7 +1312,7 @@ rm(df_bsa)
 * Lactate: 1 mmol/L
 * LDH: 220 U/L
 * Hemoglobin: 14.9 g/dL for males, 13.3 g/dL for females
-* BNP: median
+* BNP: median based on BNP type
 * Sodium: median
 * eGFR: 100 mL/min/1.73m^2
 * Cardiac output: 2.5 x bsa if LVAD, 2.2 x bsa else
@@ -1307,7 +1329,14 @@ df_intervals$LDH[is.na(df_intervals$LDH)] <- 220
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'M'] <- 14.9
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'F'] <- 13.3
 
-df_intervals$BNP[is.na(df_intervals$BNP)] <- median(df_intervals$BNP, na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'BNP'] <- 
+  median(df_intervals$BNP[df_intervals$BNP_Type == 'BNP'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'BNP'] <- 
+  median(df_intervals$BNP[df_intervals$BNP_Type == 'BNP'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & is.na(df_intervals$BNP)] <- 
+  median(df_intervals$BNP[is.na(df_intervals$BNP)], na.rm=T)
+
+
 df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$BNP, na.rm=T)
 ```
 
@@ -1425,7 +1454,7 @@ df_candthor %>%
 ---------------------------------
 
 
-# 9. Generate new clinical variables
+# 10. Generate new clinical variables
 
 ### Temporary surgery MCS, ever
 ```{r, warning=F, comment=NA, message=F}
@@ -1473,7 +1502,7 @@ save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 ---------------------------------
 
 
-# 10. Sample checks between blocked and unblocked
+# 11. Sample checks between blocked and unblocked
 
 ### A random sample of 10 patients
 ```{r}
