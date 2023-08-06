@@ -22,6 +22,8 @@ Updated 7/9/2023: Added.
 
 Updated 7/11/2023: Imputation procedure changed, code cleaned to fully account for edge cases.
 
+Updated 8/6/2023: BNP type added.
+
 
 ### 2. elastic_net_model.R
 Sample iteration of elastic net models with parameter tuning on alpha and lambda. Requires large amount of computational resources. Optional. Estimated runtime of several hours on a high-memory node.
