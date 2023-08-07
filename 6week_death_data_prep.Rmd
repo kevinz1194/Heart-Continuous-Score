@@ -1,8 +1,10 @@
 ---
 title: "Heart Transplant 14-Day Interval Data, Death in 6 Weeks"
 output:
+  pdf_document:
+    toc: yes
   html_document:
-    toc: true
+    toc: yes
     df_print: paged
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
@@ -12,12 +14,12 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
 <!-- 4. Set up remaining clinical variables (Line 733) -->
 <!-- 5. Add in BNP type (Line 839) -->
-<!-- 6. Create intervals (Line 856) -->
-<!-- 7. Add memory variables (Line 1113) -->
-<!-- 8. Death in 6 weeks (Line 1255) -->
-<!-- 9. Impute variables (Line 1292) -->
-<!-- 10. Generate new clinical variables (Line 1457) -->
-<!-- 11. Sample checks between blocked and unblocked (Line 1505) -->
+<!-- 6. Create intervals (Line 857) -->
+<!-- 7. Add memory variables (Line 1114) -->
+<!-- 8. Death in 6 weeks (Line 1256) -->
+<!-- 9. Impute variables (Line 1293) -->
+<!-- 10. Generate new clinical variables (Line 1456) -->
+<!-- 11. Sample checks between blocked and unblocked (Line 1504) -->
 
 
 
@@ -840,13 +842,12 @@ df <- df %>% select(-c(JustId, events,
 
 ```{r, warning=F, comment=NA, message=F}
 df_riskstrat <- haven::read_sas('./RiskStratDataHR.sas7bdat')
-df_riskstrat <- df_riskstrat %>% select(px_id, HrSevFailNtBnpType) %>%
-  filter(HrSevFailNtBnpType != '')
-
-colnames(df_riskstrat) <- c('PX_ID', 'BNP_Type')
+df_riskstrat <- df_riskstrat %>% select(px_id, HrSevFailNtBnpType) 
 
 
-df <- merge(df, df_riskstrat, by = 'PX_ID', all.x = T, all.y = F)
+df$BNP_NT_Pro <- 0
+df$BNP_NT_Pro[df$PX_ID %in%
+                unique(df_riskstrat$px_id[df_riskstrat$HrSevFailNtBnpType == 'NT Pro BNP'])] <- 1
 ```
 
 
@@ -941,7 +942,7 @@ for(i in nrow(df_intervals):2) {
     
     df_intervals$sodium[i] <- df_intervals$sodium[i-1]
     df_intervals$BNP[i] <- df_intervals$BNP[i-1]
-    df_intervals$BNP_Type[i] <- df_intervals$BNP_Type[i-1]
+    df_intervals$BNP_NT_Pro[i] <- df_intervals$BNP_NT_Pro[i-1]
     df_intervals$heart_rate[i] <- df_intervals$heart_rate[i-1]
     df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i-1]
     df_intervals$PASP[i] <- df_intervals$PASP[i-1]
@@ -1017,7 +1018,7 @@ for(j in 1:14) {
       
       df_intervals$sodium[i] <- df_intervals$sodium[i+j]
       df_intervals$BNP[i] <- df_intervals$BNP[i+j]
-      df_intervals$BNP_Type[i] <- df_intervals$BNP_Type[i+j]
+      df_intervals$BNP_NT_Pro[i] <- df_intervals$BNP_NT_Pro[i+j]
       df_intervals$heart_rate[i] <- df_intervals$heart_rate[i+j]
       df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i+j]
       df_intervals$PASP[i] <- df_intervals$PASP[i+j]
@@ -1329,12 +1330,10 @@ df_intervals$LDH[is.na(df_intervals$LDH)] <- 220
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'M'] <- 14.9
 df_intervals$hemoglobin[is.na(df_intervals$hemoglobin) & df_intervals$CAN_GENDER == 'F'] <- 13.3
 
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'BNP'] <- 
-  median(df_intervals$BNP[df_intervals$BNP_Type == 'BNP'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_Type == 'NT Pro BNP'] <- 
-  median(df_intervals$BNP[df_intervals$BNP_Type == 'NT Pro BNP'], na.rm=T)
-df_intervals$BNP[is.na(df_intervals$BNP) & is.na(df_intervals$BNP)] <- 
-  median(df_intervals$BNP[is.na(df_intervals$BNP)], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_NT_Pro == '0'] <- 
+  median(df_intervals$BNP[df_intervals$BNP_NT_Pro == '0'], na.rm=T)
+df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_NT_Pro == '1'] <- 
+  median(df_intervals$BNP[df_intervals$BNP_NT_Pro == '1'], na.rm=T)
 
 
 df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$BNP, na.rm=T)
