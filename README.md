@@ -48,6 +48,8 @@ Updated 7/11/2023: Main figure structure revised, now includes calibration and f
 
 Updated 7/13/2023: Colors changed, confidence intervals added.
 
+Updated 8/9/2023: Models add NT-proBNP.
+
 
 ### 5. figures_unblocked.Rmd
 Figures from the full, unblocked (no 14-day intervals) dataset. 
