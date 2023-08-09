@@ -8,14 +8,14 @@ authors: Kevin Zhang
 ---
 
 <!-- 1. Set up dataset with generated cardiac variables (Line 34) -->
-<!-- 2. Set up matrices for predictions (Line 137) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 590) -->
-<!-- 4. Obtain machine learning model results (Line 1114) -->
-<!-- 5. Make predictions on test dataset (Line 1172) -->
-<!-- 6. Create AUC curves (Line 1213) -->
-<!-- 7. Variable importance plots from gradient-boosted models (Line 1295) -->
-<!-- 8. Create calibration plot in test dataset (Line 1356) -->
-<!-- 9. Create facet plot of 50 point score at initial listing (Line 1404) -->
+<!-- 2. Set up matrices for predictions (Line 138) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 594) -->
+<!-- 4. Obtain machine learning model results (Line 1245) -->
+<!-- 5. Make predictions on test dataset (Line 1303) -->
+<!-- 6. Create AUC curves (Line 1344) -->
+<!-- 7. Variable importance plots from gradient-boosted models (Line 1426) -->
+<!-- 8. Create calibration plot in test dataset (Line 1487) -->
+<!-- 9. Create facet plot of 50 point score at initial listing (Line 1535) -->
 
 
 
@@ -24,7 +24,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot)
-knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -105,12 +105,13 @@ df_intervals$papi[df_intervals$papi < 1 & !is.na(df_intervals$papi)] <- 1
 ### MCS variables
 df_intervals <- df_intervals %>%
   mutate(short_MCS_French = 
-           case_when(
-             (ECMO == '1' & status == '1') | IABP == '1' ~ 1,
+           case_when((ECMO == '1' & status == '1') | IABP == '1' ~ 1,
+             TRUE ~ 0)) %>% 
+  mutate(short_MCS_French_new = 
+           case_when((ECMO == '1' & status == '1') ~ 1,
              TRUE ~ 0)) %>% 
   mutate(short_MCS_ever = 
-           case_when(
-             ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
+           case_when(ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
              TRUE ~ 0))
 
 
@@ -181,6 +182,7 @@ mat_train <- data.frame(cbind(
   df_intervals[df_intervals$train_test == 'Train', ]$sodium, 
   df_intervals[df_intervals$train_test == 'Train', ]$AST, 
   df_intervals[df_intervals$train_test == 'Train', ]$BNP,
+  df_intervals[df_intervals$train_test == 'Train', ]$BNP_NT_Pro,
   df_intervals[df_intervals$train_test == 'Train', ]$BUN, 
   df_intervals[df_intervals$train_test == 'Train', ]$INR, 
   df_intervals[df_intervals$train_test == 'Train', ]$life_arrhythmia,
@@ -247,7 +249,7 @@ names(mat_train) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Interv
                       'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                       'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                       'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
-                      'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR', 'Life_Arrhythmia',
+                      'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
                       'BiVAD_NoDischarge', 'TempSurgery_LVAD', 'Other_DurableMCSD', 'MCSD_Malfunction',
                       'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf', 'MCSD_DeviceInfection',
                       'MCSD_Bleed', 'MCSD_Aortic_Insufficent', 'Angina')
@@ -261,7 +263,7 @@ names(mat_train_all) <-  c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'I
                            'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                            'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                            'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
-                           'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR', 'Life_Arrhythmia',
+                           'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
                            'BiVAD_NoDischarge', 'TempSurgery_LVAD', 'Other_DurableMCSD', 'MCSD_Malfunction',
                            'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf', 'MCSD_DeviceInfection',
                            'MCSD_Bleed', 'MCSD_Aortic_Insufficent', 'Angina',
@@ -326,6 +328,7 @@ mat_test <- data.frame(cbind(
   df_intervals[df_intervals$train_test == 'Test', ]$sodium, 
   df_intervals[df_intervals$train_test == 'Test', ]$AST, 
   df_intervals[df_intervals$train_test == 'Test', ]$BNP,
+  df_intervals[df_intervals$train_test == 'Test', ]$BNP_NT_Pro,
   df_intervals[df_intervals$train_test == 'Test', ]$BUN, 
   df_intervals[df_intervals$train_test == 'Test', ]$INR, 
   df_intervals[df_intervals$train_test == 'Test', ]$life_arrhythmia,
@@ -393,7 +396,7 @@ names(mat_test) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Interva
                       'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                       'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                       'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
-                      'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR', 'Life_Arrhythmia',
+                      'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
                       'BiVAD_NoDischarge', 'TempSurgery_LVAD', 'Other_DurableMCSD', 'MCSD_Malfunction',
                       'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf', 'MCSD_DeviceInfection',
                       'MCSD_Bleed', 'MCSD_Aortic_Insufficent', 'Angina')
@@ -407,7 +410,7 @@ names(mat_test_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Int
                           'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                           'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                           'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
-                          'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR', 'Life_Arrhythmia',
+                          'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
                           'BiVAD_NoDischarge', 'TempSurgery_LVAD', 'Other_DurableMCSD', 'MCSD_Malfunction',
                           'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf', 'MCSD_DeviceInfection',
                           'MCSD_Bleed', 'MCSD_Aortic_Insufficent', 'Angina',
@@ -437,7 +440,7 @@ mat_test_numeric <- mat_test_numeric[ , c('(Intercept)', 'Interval_1', 'Interval
                                           'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                           'Central_Venous_Pressure', 'Arterial_Lactate', 'CPO', 'API', 'PAPI',
                                           'Hemoglobin', 'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 
-                                          'AST100', 'BNP100', 'BUN10', 'INR',
+                                          'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR',
                                           'Life_Arrhythmia', 'BiVAD_NoDischarge', 'TempSurgery_LVAD',
                                           'Other_DurableMCSD', 'MCSD_Malfunction', 'VTach_Fib', 'Perc_LVAD',
                                           'MCSD_Hemolysis', 'MCSD_Rhf', 'MCSD_DeviceInfection', 'MCSD_Bleed',
@@ -454,8 +457,8 @@ names(mat_test_all_numeric) <- c('Interval_1', 'Interval_2', 'Interval_3', 'Inte
                                  'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
                                  'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                  'Central_Venous_Pressure', 'Arterial_Lactate', 'CPO', 'API', 'PAPI',
-                                 'Hemoglobin', 'Albumin',
-                                 'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR',
+                                 'Hemoglobin', 'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 
+                                 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR',
                                  'Life_Arrhythmia', 'BiVAD_NoDischarge', 'TempSurgery_LVAD', 'Other_DurableMCSD',
                                  'MCSD_Malfunction', 'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf',
                                  'MCSD_DeviceInfection', 'MCSD_Bleed', 'MCSD_Aortic_Insufficent', 'Angina',
@@ -485,7 +488,7 @@ mat_test_all_numeric <- mat_test_all_numeric[ , c('(Intercept)',
                                                   'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                                   'Central_Venous_Pressure', 'Arterial_Lactate', 'Hemoglobin',
                                                   'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100',
-                                                  'BUN10', 'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge',
+                                                  'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge',
                                                   'TempSurgery_LVAD', 'Other_DurableMCSD', 
                                                   'MCSD_Malfunction', 'VTach_Fib',
                                                   'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf',
@@ -533,7 +536,8 @@ DMat_test <- xgb.DMatrix(as.matrix(mat_test_numeric[,c('(Intercept)',
                                                        'Cardiac_Output', 'Central_Venous_Pressure', 
                                                        'Arterial_Lactate', 'Hemoglobin',
                                                        'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100',
-                                                       'BUN10', 'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge',
+                                                       'BNP_NT_Pro', 'BUN10', 'INR', 
+                                                       'Life_Arrhythmia', 'BiVAD_NoDischarge',
                                                        'TempSurgery_LVAD', 'Other_DurableMCSD', 'MCSD_Malfunction',
                                                        'VTach_Fib', 'Perc_LVAD', 'MCSD_Hemolysis', 'MCSD_Rhf',
                                                        'MCSD_DeviceInfection', 'MCSD_Bleed', 'MCSD_Aortic_Insufficent',
@@ -551,7 +555,7 @@ colnames(DMat_test) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interval_3'
                          'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                          'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                          'Arterial_Lactate', 'Hemoglobin', 'Albumin',
-                         'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR',
+                         'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'BNP_NT_Pro', 'INR',
                          'Life_Arrhythmia1', 'BiVAD_NoDischarge1', 'TempSurgery_LVAD1', 'Other_DurableMCSD1',
                          'MCSD_Malfunction1', 'VTach_Fib1', 'Perc_LVAD1', 'MCSD_Hemolysis1', 'MCSD_Rhf1',
                          'MCSD_DeviceInfection1', 'MCSD_Bleed1', 'MCSD_Aortic_Insufficent1', 'Angina1')
@@ -565,7 +569,7 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
                              'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                              'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                              'Arterial_Lactate', 'Hemoglobin', 'Albumin',
-                             'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'INR',
+                             'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR',
                              'Life_Arrhythmia1', 'BiVAD_NoDischarge1', 'TempSurgery_LVAD1', 'Other_DurableMCSD1',
                              'MCSD_Malfunction1', 'VTach_Fib1', 'Perc_LVAD1', 'MCSD_Hemolysis1', 'MCSD_Rhf1',
                              'MCSD_DeviceInfection1', 'MCSD_Bleed1', 'MCSD_Aortic_Insufficent1', 'Angina1',
@@ -587,7 +591,7 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
 -------------
 
 
-# 3. Run selected logistic regression models
+# 3. Run selected logistic regression models and create coefficient plots
 All models are run in the training datasets.
 
 
@@ -639,22 +643,13 @@ save(model1, file = './model_frenchCRS.RData')
 ```
 
 
-### Selected Model #2: US candidate risk score with PCWP
-
-* Pulmonary capillary wedge pressure (PCWP)
-* Albumin
-* Natural log of (bilirubin + 1)
-* eGFR
-* Sodium
-* Natural log of (BNP + 1)
-* LVAD
-* Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
+### Selected Model #2: New French candidate risk score
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model2 <- glm(formula = as.formula(
   death6week ~ 
-    PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -668,17 +663,63 @@ model2_results <- model2_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model2_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model2_results$Variable <- c('Intercept', 'Short Term MCS (New)', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
 
 model2_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+
+save(model2, file = './model_frenchCRS_new.RData')
+```
+
+
+### Selected Model #3: US candidate risk score with PCWP
+
+* Pulmonary capillary wedge pressure (PCWP)
+* Albumin
+* Natural log of (bilirubin + 1)
+* eGFR
+* Sodium
+* Natural log of (BNP + 1)
+* NT-proBNP
+* LVAD
+* Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
+* BNP and NT-proBNP interaction
+
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model3 <- glm(formula = as.formula(
+  death6week ~ 
+    PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model3_results <- as.data.frame(summary(model3)$coefficients)
+model3_results$name <- rownames(model3_results)
+
+model3_results <- model3_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model3_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model3_results) <- seq(1:nrow(model3_results))
+model3_results <- model3_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model3_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 'NT-proBNP Interaction')
+
+model3_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
 ```
 
 
-### Selected Model #3: US candidate risk score replacing PCWP
+### Selected Model #4: US candidate risk score replacing PCWP
 
 * Replaces PCWP with Cardiac Pressure Output (CPO) and Aortic Pulsatility Index (API)
 * CPO = (1/541) x (Cardiac Output) x (2/3 x Systolic BP  +  1/3 x Diastolic BP)
@@ -696,39 +737,11 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'p
 #### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model3 <- glm(formula = as.formula(
-  death6week ~ 
-    cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
-  data = df_intervals[df_intervals$train_test == 'Train',], 
-  family = binomial)
-
-model3_results <- as.data.frame(summary(model3)$coefficients)
-model3_results$name <- rownames(model3_results)
-
-model3_results <- model3_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model3_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model3_results) <- seq(1:nrow(model3_results))
-model3_results <- model3_results %>% 
-  mutate(Estimate = round(Estimate, 3),
-           PValue = round(PValue, 3))
-
-model3_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
-
-model3_results %>%
-  kable(align=c('c', 'c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
-```
-
-
-### Selected Model #4: US candidate risk score with only CPO
-
-
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model4 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -742,8 +755,9 @@ model4_results <- model4_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model4_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model4_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 
+                             'Sodium', 'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 'NT-proBNP Interaction')
 
 model4_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -752,13 +766,15 @@ model4_results %>%
 ```
 
 
-### Selected Model #5: US candidate risk score with only API
+### Selected Model #5: US candidate risk score with only CPO
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model5 <- glm(formula = as.formula(
   death6week ~ 
-    api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -772,8 +788,10 @@ model5_results <- model5_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model5_results$Variable <- c('Intercept', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model5_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
 
 model5_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -782,7 +800,42 @@ model5_results %>%
 ```
 
 
-### Selected Model #6: US candidate risk score replacing API with PAPI
+### Selected Model #6: US candidate risk score with only API
+
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model6 <- glm(formula = as.formula(
+  death6week ~ 
+    api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model6_results <- as.data.frame(summary(model6)$coefficients)
+model6_results$name <- rownames(model6_results)
+
+model6_results <- model6_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model6_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model6_results) <- seq(1:nrow(model6_results))
+model6_results <- model6_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model6_results$Variable <- c('Intercept', 'API', 'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium',                          
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
+
+model6_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### Selected Model #7: US candidate risk score replacing API with PAPI
 
 * PAPI = (Systolic pulmonary artery pressure - diastolic pulmonary artery pressure) / right atrial pressure 
 * Right atrial pressure is central venous pressure
@@ -799,50 +852,12 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, use = '
 #### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model6 <- glm(formula = as.formula(
-  death6week ~ 
-    cpo + papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
-  data = df_intervals[df_intervals$train_test == 'Train',], 
-  family = binomial)
-
-model6_results <- as.data.frame(summary(model6)$coefficients)
-model6_results$name <- rownames(model6_results)
-
-model6_results <- model6_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model6_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model6_results) <- seq(1:nrow(model6_results))
-model6_results <- model6_results %>% 
-  mutate(Estimate = round(Estimate, 3),
-           PValue = round(PValue, 3))
-
-model6_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
-
-model6_results %>%
-  kable(align=c('c', 'c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
-
-save(model6, file = './model_USCRS.RData')
-```
-
-
-### Selected Model #7: US candidate risk score with only PAPI
-
-#### Correlation between PAPi and API
-
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
-paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
-```
-
-
-#### Model results
-
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model7 <- glm(formula = as.formula(
   death6week ~ 
-    papi + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    cpo + papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -856,8 +871,11 @@ model7_results <- model7_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model7_results$Variable <- c('Intercept', 'PAPi', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model7_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1',
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
 
 model7_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -866,12 +884,25 @@ model7_results %>%
 ```
 
 
-### Selected Model #8: US candidate risk score with PAPi, AST, and API
+### Selected Model #8: US candidate risk score with only PAPI
+
+#### Correlation between PAPi and API
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
+paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
+```
+
+
+#### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model8 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + papi + api + AST + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) +
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -885,9 +916,11 @@ model8_results <- model8_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model8_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 'AST',
-                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model8_results$Variable <- c('Intercept', 'PAPi', 'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
 
 model8_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -896,12 +929,15 @@ model8_results %>%
 ```
 
 
-### Selected Model #9: US candidate risk score with PAPi and API
+### Selected Model #9: US candidate risk score with PAPi, AST, and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model9 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    cpo + papi + api + AST + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) +
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -915,9 +951,12 @@ model9_results <- model9_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model9_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 
-                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model9_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 'AST',
+                             'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
 
 model9_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -926,12 +965,14 @@ model9_results %>%
 ```
 
 
-### Selected Model #10: US candidate risk score with PAPi and AST
+### Selected Model #10: US candidate risk score with PAPi and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model10 <- glm(formula = as.formula(
   death6week ~ 
-    cpo + papi + AST + albumin + log(bilirubin + 1) + eGFR + sodium + log(BNP + 1) + LVAD + short_MCS_ever), 
+    cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) +
+    LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -945,11 +986,50 @@ model10_results <- model10_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model10_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'AST', 
-                             'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 'Log BNP+1',
-                             'LVAD', 'Short MCS Ever')
+model10_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 
+                             'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
 
 model10_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### Selected Model #11: US candidate risk score with PAPi and AST
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model11 <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + AST + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1)*BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model11_results <- as.data.frame(summary(model11)$coefficients)
+model11_results$name <- rownames(model11_results)
+
+model11_results <- model11_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model11_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model11_results) <- seq(1:nrow(model11_results))
+model11_results <- model11_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model11_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'AST', 
+                             'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium',                              
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever', 
+                             'NT-proBNP Interaction')
+
+model11_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -961,19 +1041,22 @@ model10_results %>%
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_comparison <- data.frame(
   'Model' = c('1 (French)', 
-              '2 (US-CRS with PCWP)', 
-              '3 (US-CRS with CPO and API)', 
-              '4 (US-CRS with CPO Only)',
-              '5 (US-CRS with API Only)',
-              '6 (US-CRS with CPO and PAPi)',
-              '7 (US-CRS with PAPi Only)',
-              '8 (US-CRS with PAPi, API, AST)',
-              '9 (US-CRS with PAPi and API)',
-              '10 (US-CRS with PAPi and AST)'),
+              '2 (New French)',
+              '3 (US-CRS with PCWP)', 
+              '4 (US-CRS with CPO and API)', 
+              '5 (US-CRS with CPO Only)',
+              '6 (US-CRS with API Only)',
+              '7 (US-CRS with CPO and PAPi)',
+              '8 (US-CRS with PAPi Only)',
+              '9 (US-CRS with PAPi, API, AST)',
+              '10 (US-CRS with PAPi and API)',
+              '11 (US-CRS with PAPi and AST)'),
   'AIC' = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model5), 
-            AIC(model6), AIC(model7), AIC(model8), AIC(model9), AIC(model10)),
+            AIC(model6), AIC(model7), AIC(model8), AIC(model9), AIC(model10),
+            AIC(model11)),
   'BIC' = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model5), 
-            BIC(model6), BIC(model7), BIC(model8), BIC(model9), BIC(model10)))
+            BIC(model6), BIC(model7), BIC(model8), BIC(model9), BIC(model10),
+            BIC(model11)))
 
 model_comparison$AIC <- round(model_comparison$AIC, 3)
 model_comparison$BIC <- round(model_comparison$BIC, 3)
@@ -986,10 +1069,52 @@ model_comparison %>%
 ```
 
 
+### Final US-CRS model (no interaction term)
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model_final <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1) + BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final_results <- as.data.frame(summary(model_final)$coefficients)
+model_final_results$name <- rownames(model_final_results)
+
+model_final_results <- model_final_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_final_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_final_results) <- seq(1:nrow(model_final_results))
+model_final_results <- model_final_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_final_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1',
+                             'eGFR', 'Sodium', 
+                             'Log BNP+1', 'NT-proBNP',
+                             'LVAD', 'Short MCS Ever')
+
+model_final_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+
+
+save(model_final, file = './model_USCRS.RData')
+```
+
+
+----------------------------
+
+
+
+
 ### Coefficient plot of results (Figure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_coefplot <- as.data.frame(summary(model6)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot <- as.data.frame(summary(model_final)$coefficients)[ ,c('Estimate', 'Std. Error')]
 df_coefplot$var <- rownames(df_coefplot)
 rownames(df_coefplot) <- NULL
 colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
@@ -1004,7 +1129,8 @@ df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficient
 df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Estimate']
 
 
-df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
+  summary(model1)$coefficients['short_MCS_French', 'Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
   summary(model1)$coefficients['log(bilirubin + 1)', 'Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Std. Error']
@@ -1013,14 +1139,15 @@ df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$
 
 df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
 df_coefplot$var <- c('(Intercept)', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin', 
-'eGFR', 'Sodium', 'Log BNP', 'Durable LVAD', 'Short-Term MCS')
+'eGFR', 'Sodium', 'Log BNP', 'NT-proBNP', 'Durable LVAD', 'Short-Term MCS')
 df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
 
 
 df_coefplot <- df_coefplot %>%
   arrange(sapply(var, 
                  function(x) 
-                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 
+                                'eGFR', 'Log BNP', 'NT-proBNP', 
                                 'CPO', 'PAPi', 'Albumin', 'Sodium', 'Durable LVAD'))))
 
 
@@ -1074,7 +1201,9 @@ df_coefplot$upper[df_coefplot$upper == -Inf] <- NA
 df_coefplot <- df_coefplot %>%
   arrange(sapply(var, 
                  function(x) 
-                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 'Log BNP', 'CPO', 'PAPi', 'Albumin', 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP', 'NT-proBNP',
+                                'CPO', 'PAPi', 'Albumin', 
                                 'Sodium', 'Durable LVAD'))))
 
 
@@ -1082,16 +1211,18 @@ df_coefplot <- df_coefplot %>%
 df_coefplot %>%
   ggplot(aes(x=est, 
              y=factor(var, levels = c('Durable LVAD', 'Sodium', 'Albumin', 'PAPi', 'CPO', 
-                                      'Log BNP', 'eGFR', 'Log Bilirubin', 
+                                      'Log BNP', 'NT-proBNP', 
+                                      'eGFR', 'Log Bilirubin', 
                                       'Short-Term MCS')), 
              color=model)) +
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e') +
-  xlab('Log-Odds') + xlim(-1.25, 1.25) +
-  scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', expression('PAPi'^'c'), 
-                             'CPO', 'Log BNP', expression('eGFR'^'b'), 'Log Bilirubin', 
-                              expression('Short-Term MCS'^'a'))) +
+  xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
+  scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
+                            expression('PAPi'^'c'), 'CPO', 'Log BNP', 
+                            'NT-proBNP', expression('eGFR'^'b'), 'Log Bilirubin', 
+                            expression('Short-Term MCS'^'a'))) +
   scale_colour_manual(name='Model',
                       breaks = c('US', 'French'),
                       values = c('#880d1e', '#3f88c5'), 
@@ -1177,10 +1308,10 @@ model1_predict <- as.numeric(
 model1_indices <- which(!is.na(model1_predict))
 model1_predict <- na.omit(model1_predict)
 
-model6_predict <- as.numeric(
-  predict(model6, newdata = df_intervals_test, type = 'response'))
-model6_indices <- which(!is.na(model6_predict))
-model6_predict <- na.omit(model6_predict)
+model_final_predict <- as.numeric(
+  predict(model_final, newdata = df_intervals_test, type = 'response'))
+model_final_indices <- which(!is.na(model_final_predict))
+model_final_predict <- na.omit(model_final_predict)
 
 
 
@@ -1203,7 +1334,7 @@ df_intervals_test_nomem <- df_intervals_test[(as.numeric(rownames(df_intervals_t
 df_intervals_test_mem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% mem_indices), ]
 
 df_intervals_test_model1 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model1_indices), ]
-df_intervals_test_model6 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model6_indices), ]
+df_intervals_test_model_final <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
 ```
 
 
@@ -1357,7 +1488,7 @@ cowplot::plot_grid(p1, p2, labels = 'AUTO')
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 ## Convert first to 50-point medical urgency score
-df_intervals$uscrs_predict <- predict(model6, newdata = df_intervals, type = 'response')
+df_intervals$uscrs_predict <- predict(model_final, newdata = df_intervals, type = 'response')
 df_intervals <- df_intervals %>%
   mutate(uscrs_score = cut_number(uscrs_predict, 50, labels= FALSE))
 
@@ -1404,7 +1535,7 @@ df_intervals_test %>%
 # 9. Create facet plot of 50 point score at initial listing (Figure 4)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_intervals$uscrs_predict <- predict(model6, newdata = df_intervals)
+df_intervals$uscrs_predict <- predict(model_final, newdata = df_intervals)
 
 df_intervals %>%
   filter(!is.na(status)) %>%
