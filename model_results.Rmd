@@ -1361,7 +1361,7 @@ pROC::roc(df_intervals_test_nomem$death6week ~ elastic_nomem_predict, direction=
 pROC::roc(df_intervals_test$death6week ~ xg_nomem_predict, direction='<', 
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
-pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<', 
+pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<', 
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<', 
@@ -1371,7 +1371,7 @@ legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
-                 'French CRS',
+                 'New French CRS',
                  'US CRS with PAPI and CPO'),
        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
@@ -1388,7 +1388,7 @@ pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<',
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no', 
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
-pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
+pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
@@ -1398,7 +1398,7 @@ legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
-                 'French CRS',
+                 'New French CRS',
                  'US CRS'),
        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
@@ -1414,14 +1414,14 @@ pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial,
           print.thres.pattern= "Status%2.f",
           print.auc.cex = 1.2,
           legacy.axes=T)
-pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
+pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
 pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
 legend('bottomright', cex = 1.2, xpd = T,
-      legend = c('6-Status', 'French CRS', 'US CRS'),
+      legend = c('6-Status', 'New French CRS', 'US CRS'),
        col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=3)
 ```
 
