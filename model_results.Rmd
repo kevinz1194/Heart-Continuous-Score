@@ -10,12 +10,12 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 34) -->
 <!-- 2. Set up matrices for predictions (Line 138) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 594) -->
-<!-- 4. Obtain machine learning model results (Line 1245) -->
-<!-- 5. Make predictions on test dataset (Line 1303) -->
-<!-- 6. Create AUC curves (Line 1344) -->
-<!-- 7. Variable importance plots from gradient-boosted models (Line 1426) -->
-<!-- 8. Create calibration plot in test dataset (Line 1487) -->
-<!-- 9. Create facet plot of 50 point score at initial listing (Line 1535) -->
+<!-- 4. Obtain machine learning model results (Line 1243) -->
+<!-- 5. Make predictions on test dataset (Line 1301) -->
+<!-- 6. Create AUC curves (Line 1348) -->
+<!-- 7. Variable importance plots from gradient-boosted models (Line 1430) -->
+<!-- 8. Create calibration plot in test dataset (Line 1491) -->
+<!-- 9. Create facet plot of 50 point score at initial listing (Line 1539) -->
 
 
 
@@ -555,7 +555,7 @@ colnames(DMat_test) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interval_3'
                          'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                          'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                          'Arterial_Lactate', 'Hemoglobin', 'Albumin',
-                         'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 'BNP_NT_Pro', 'INR',
+                         'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro1', 'BUN10', 'INR',
                          'Life_Arrhythmia1', 'BiVAD_NoDischarge1', 'TempSurgery_LVAD1', 'Other_DurableMCSD1',
                          'MCSD_Malfunction1', 'VTach_Fib1', 'Perc_LVAD1', 'MCSD_Hemolysis1', 'MCSD_Rhf1',
                          'MCSD_DeviceInfection1', 'MCSD_Bleed1', 'MCSD_Aortic_Insufficent1', 'Angina1')
@@ -569,7 +569,7 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
                              'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                              'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                              'Arterial_Lactate', 'Hemoglobin', 'Albumin',
-                             'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR',
+                             'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro1', 'BUN10', 'INR',
                              'Life_Arrhythmia1', 'BiVAD_NoDischarge1', 'TempSurgery_LVAD1', 'Other_DurableMCSD1',
                              'MCSD_Malfunction1', 'VTach_Fib1', 'Perc_LVAD1', 'MCSD_Hemolysis1', 'MCSD_Rhf1',
                              'MCSD_DeviceInfection1', 'MCSD_Bleed1', 'MCSD_Aortic_Insufficent1', 'Angina1',
@@ -1109,8 +1109,6 @@ save(model_final, file = './model_USCRS.RData')
 ----------------------------
 
 
-
-
 ### Coefficient plot of results (Figure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
@@ -1122,19 +1120,19 @@ colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
 df_coefplot$french_est <- NA
 df_coefplot$french_stderr <- NA
 
-df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- summary(model1)$coefficients['short_MCS_French', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- summary(model2)$coefficients['short_MCS_French_new', 'Estimate']
 df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  summary(model1)$coefficients['log(bilirubin + 1)', 'Estimate']
-df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Estimate']
-df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Estimate']
+  summary(model2)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model2)$coefficients['eGFR', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model2)$coefficients['log(BNP + 1)', 'Estimate']
 
 
 df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
-  summary(model1)$coefficients['short_MCS_French', 'Std. Error']
+  summary(model2)$coefficients['short_MCS_French_new', 'Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  summary(model1)$coefficients['log(bilirubin + 1)', 'Std. Error']
-df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model1)$coefficients['eGFR', 'Std. Error']
-df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model1)$coefficients['log(BNP + 1)', 'Std. Error']
+  summary(model2)$coefficients['log(bilirubin + 1)', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model2)$coefficients['eGFR', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model2)$coefficients['log(BNP + 1)', 'Std. Error']
 
 
 df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
@@ -1211,7 +1209,7 @@ df_coefplot <- df_coefplot %>%
 df_coefplot %>%
   ggplot(aes(x=est, 
              y=factor(var, levels = c('Durable LVAD', 'Sodium', 'Albumin', 'PAPi', 'CPO', 
-                                      'Log BNP', 'NT-proBNP', 
+                                      'NT-proBNP', 'Log BNP', 
                                       'eGFR', 'Log Bilirubin', 
                                       'Short-Term MCS')), 
              color=model)) +
@@ -1220,13 +1218,13 @@ df_coefplot %>%
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e') +
   xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
-                            expression('PAPi'^'c'), 'CPO', 'Log BNP', 
-                            'NT-proBNP', expression('eGFR'^'b'), 'Log Bilirubin', 
+                            expression('PAPi'^'c'), 'CPO', 'NT-proBNP', 'Log BNP', 
+                            expression('eGFR'^'b'), 'Log Bilirubin', 
                             expression('Short-Term MCS'^'a'))) +
   scale_colour_manual(name='Model',
                       breaks = c('US', 'French'),
                       values = c('#880d1e', '#3f88c5'), 
-                      labels = c('US-CRS', 'French-CRS')) + 
+                      labels = c('US-CRS', 'Current French-CRS')) + 
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -1364,7 +1362,7 @@ pROC::roc(df_intervals_test$death6week ~ xg_nomem_predict, direction='<',
 pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<', 
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
-pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<', 
+pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<', 
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
@@ -1417,7 +1415,7 @@ pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial,
 pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
-pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
+pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
 legend('bottomright', cex = 1.2, xpd = T,
@@ -1550,7 +1548,7 @@ df_intervals %>%
   ggplot(aes(x= uscrs_score, fill = status)) +
   scale_fill_manual(name = 'Status', values = c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
   geom_histogram(binwidth = 2) +  
-  xlab('US-CRS Initial Score') + ylab('Count') +
+  xlab('US-CRS Initial Score') + ylab('Number of Candidates') +
   theme_bw() + 
     theme(
     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
