@@ -13,9 +13,9 @@ authors: Kevin Zhang
 <!-- 4. Obtain machine learning model results (Line 1243) -->
 <!-- 5. Make predictions on test dataset (Line 1301) -->
 <!-- 6. Create AUC curves (Line 1348) -->
-<!-- 7. Variable importance plots from gradient-boosted models (Line 1402) -->
-<!-- 8. Create calibration plot in test dataset (Line 1463) -->
-<!-- 9. Create facet plot of 50 point score at initial listing (Line 1511) -->
+<!-- 7. Variable importance plots from gradient-boosted models (Line 1404) -->
+<!-- 8. Create calibration plot in test dataset (Line 1465) -->
+<!-- 9. Create facet plot of 50 point score at initial listing (Line 1513) -->
 
 
 
@@ -1350,6 +1350,7 @@ df_intervals_test_model_final <- df_intervals_test[(as.numeric(rownames(df_inter
 ### ROC curve for models with all memory variables (eFigure 5)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
+# dev.new(width = 7,height = 6, noRStudioGD = T)
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
           plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no', lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
@@ -1358,13 +1359,13 @@ pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<',
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no', 
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
-pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<',
+pROC::roc(df_intervals_test_model2$death6week ~ model2_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
-legend('bottomright', cex = 0.9, xpd = T,
+legend('bottomright', cex = 0.6, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
@@ -1376,7 +1377,8 @@ legend('bottomright', cex = 0.9, xpd = T,
 
 ### ROC curve for subset of models (Figure 2)
 
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=10, fig.width=10, results='hide'}
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
+# dev.new(width = 7,height = 6, noRStudioGD = T)
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>',
           plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
           lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
@@ -1384,15 +1386,15 @@ pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial,
           print.thres.pattern= "Status%2.f",
           print.auc.cex = 1.2,
           legacy.axes=T)
-pROC::roc(df_intervals_test_model1$death6week ~ model2_predict, direction='<',
+pROC::roc(df_intervals_test_model2$death6week ~ model2_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
-legend('bottomright', cex = 1.2, xpd = T,
+legend('bottomright', xpd = T,
       legend = c('6-Status', 'New French CRS', 'US CRS'),
-       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=3)
+       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
 ```
 
 
