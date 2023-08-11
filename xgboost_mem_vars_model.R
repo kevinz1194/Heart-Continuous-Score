@@ -109,6 +109,7 @@ mat_train_all <- data.frame(cbind(df_intervals[df_intervals$train_test == 'Train
                               df_intervals[df_intervals$train_test == 'Train', ]$sodium, 
                               df_intervals[df_intervals$train_test == 'Train', ]$AST, 
                               df_intervals[df_intervals$train_test == 'Train', ]$BNP,
+                              df_intervals[df_intervals$train_test == 'Train', ]$BNP_NT_Pro,
                               df_intervals[df_intervals$train_test == 'Train', ]$BUN, 
                               df_intervals[df_intervals$train_test == 'Train', ]$INR, 
                               df_intervals[df_intervals$train_test == 'Train', ]$life_arrhythmia,
@@ -176,7 +177,7 @@ names(mat_train_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'In
                           'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                           'Central_Venous_Pressure', 'Arterial_Lactate', 'PCWP', 
                           'Hemoglobin', 'Albumin',
-                          'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 
+                          'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 
                           'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge', 
                           'TempSurgery_LVAD', 'Other_DurableMCSD',
                           'MCSD_Malfunction', 'VTach_Fib', 'Perc_LVAD', 
@@ -216,7 +217,7 @@ DMat_train_all <- xgb.DMatrix(data =
                                                   DiastolicBP + PASP + PADP + Heart_Rate10 + 
                                                   Cardiac_Output + Central_Venous_Pressure + Arterial_Lactate +
                                                   Hemoglobin + Albumin + Bilirubin + eGFR + 
-                                                  Sodium + AST100 + BNP100 + BUN10 + INR + 
+                                                  Sodium + AST100 + BNP100 + BNP_NT_Pro + BUN10 + INR + 
                                                   Life_Arrhythmia + BiVAD_NoDischarge + 
                                                   TempSurgery_LVAD + Other_DurableMCSD +
                                                   MCSD_Malfunction + VTach_Fib + Perc_LVAD + 
