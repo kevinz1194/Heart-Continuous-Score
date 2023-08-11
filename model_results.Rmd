@@ -1249,7 +1249,7 @@ Results are obtained from **elastic_net_model.R**.
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-load('./Newest Models/model_elastic_nomem_6wk.RData')
+load('./Models/model_elastic_nomem_6wk.RData')
 
 model_elastic_nomem_results <- data.frame(
   'Variable' = rownames(
@@ -1270,7 +1270,7 @@ model_elastic_nomem_results %>%
 ### Elastic Net Regression, All Memory Variables
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-load('./Newest Models/model_elastic_mem_6wk.RData')
+load('./Models/model_elastic_mem_6wk.RData')
 
 model_elastic_all_results <- data.frame(
   'Variable' = rownames(
@@ -1292,8 +1292,8 @@ model_elastic_all_results %>%
 Results are obtained from the final iteration of **xgboost_mem_vars_model.R**.
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
-load('./Newest Models/model_xgboost_nomem_final.RData')
-load('./Newest Models/model_xgboost_mem_final.RData')
+load('./Models/model_xgboost_nomem_final.RData')
+load('./Models/model_xgboost_mem_final.RData')
 ```
 
 
@@ -1307,6 +1307,11 @@ model1_predict <- as.numeric(
   predict(model1, newdata = df_intervals_test, type = 'response'))
 model1_indices <- which(!is.na(model1_predict))
 model1_predict <- na.omit(model1_predict)
+
+model2_predict <- as.numeric(
+  predict(model2, newdata = df_intervals_test, type = 'response'))
+model2_indices <- which(!is.na(model2_predict))
+model2_predict <- na.omit(model2_predict)
 
 model_final_predict <- as.numeric(
   predict(model_final, newdata = df_intervals_test, type = 'response'))
@@ -1334,6 +1339,7 @@ df_intervals_test_nomem <- df_intervals_test[(as.numeric(rownames(df_intervals_t
 df_intervals_test_mem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% mem_indices), ]
 
 df_intervals_test_model1 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model1_indices), ]
+df_intervals_test_model2 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model2_indices), ]
 df_intervals_test_model_final <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
 ```
 
@@ -1385,7 +1391,7 @@ pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
 pROC::roc(df_intervals_test_model1$death6week ~ model1_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
-pROC::roc(df_intervals_test_model6$death6week ~ model6_predict, direction='<',
+pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
 legend('bottomright', cex = 0.9, xpd = T,
