@@ -10,10 +10,10 @@ authors: Kevin Zhang
 
 <!-- 1. Set up continuous dataset (Line 31) -->
 <!-- 2. Comparison of training and testing datasets (Line 78) -->
-<!-- 3. Impute values into dataset (Line 175) -->
-<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 275) -->
-<!-- 5. Make prediction figures on unblocked dataset (Line 347) -->
-<!-- 6. 50-Point Score Based on RMST (Line 376) -->
+<!-- 3. 3. Impute values into unblocked dataset (Line 175) -->
+<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 281) -->
+<!-- 5. Make prediction figures on unblocked dataset (Line 376) -->
+<!-- 6. 50-Point Score Based on RMST (Line 405) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -21,7 +21,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools)
-knitr::opts_knit$set(root.dir = 'C:/Users/kevinz94/Desktop/DiscreteData')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -40,7 +40,7 @@ load('./intervals_v16_continuous.RData')
 df <- df %>%
   select(PX_ID, CenterId, t_start, t_stop, last_group, status,
          systolicBP, PCWP, central_venous_pressure, cardiac_output, 
-         AST, creatinine, bilirubin, albumin, sodium, BNP, 
+         AST, creatinine, bilirubin, albumin, sodium, BNP, BNP_NT_Pro,
          heart_rate, diastolicBP, PASP, PADP, hemoglobin, dialysis, peripheral_vascular, 
          status, ECMO, BiVAD_no_discharge, temp_surg_LVAD, IABP, ECMO, 
          death_flag, age, status_initial, LVAD, BiVAD, transplant)
@@ -184,8 +184,10 @@ df <- df %>%
 df$hemoglobin[is.na(df$hemoglobin) & df$CAN_GENDER == 'M'] <- 14.9
 df$hemoglobin[is.na(df$hemoglobin) & df$CAN_GENDER == 'F'] <- 13.3
 
-df$BNP[is.na(df$BNP)] <- median(df$BNP, na.rm=T)
-df$sodium[is.na(df$sodium)] <- median(df$BNP, na.rm=T)
+df$BNP[is.na(df$BNP) & df$BNP_NT_Pro == '0'] <- 
+  median(df$BNP[df$BNP_NT_Pro == '0'], na.rm=T)
+df$BNP[is.na(df$BNP) & df$BNP_NT_Pro == '1'] <- 
+  median(df$BNP[df$BNP_NT_Pro == '1'], na.rm=T)
 
 df <- df %>%
   mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD == '1'),  2.5*bsa, cardiac_output)) %>%
@@ -227,6 +229,10 @@ df <- df %>%
   mutate(short_MCS_French = 
            case_when(
              (ECMO == '1' & status == '1') | IABP == '1' ~ 1,
+             TRUE ~ 0)) %>% 
+  
+  mutate(short_MCS_French_new = 
+           case_when((ECMO == '1' & status == '1') ~ 1,
              TRUE ~ 0)) %>% 
   
   mutate(short_MCS_ever = 
@@ -303,19 +309,41 @@ French-CRS model is obtained from Section 3 of **model_results.Rmd**
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_frenchCRS.RData')
 
-df_model1 <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French, bilirubin, eGFR, BNP)
-df_model1$predict <- predict(model1, newdata = df_model1, type = 'response')
+df_model_french <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French, bilirubin, eGFR, BNP)
+df_model_french$predict <- predict(model1, newdata = df_model_french, type = 'response')
 
 
-concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model1), timewt = 'n')
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model_french), timewt = 'n')
 ```
 
 
 ### French-CRS Brier score
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-df_model1 <- subset(df_model1, !is.na(df_model1$predict))
-paste0('6-Status Brier: ', DescTools::BrierScore(df_model1$death, df_model1$predict))
+df_model_french <- subset(df_model_french, !is.na(df_model_french$predict))
+paste0('French-CRS Brier: ', DescTools::BrierScore(df_model_french$death, df_model_french$predict))
+```
+
+
+### French-CRS (new) c-index
+French-CRS model is obtained from Section 3 of **model_results.Rmd**
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+load('./model_frenchCRS_new.RData')
+
+df_model_french_new <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French_new, bilirubin, eGFR, BNP)
+df_model_french_new$predict <- predict(model2, newdata = df_model_french_new, type = 'response')
+
+
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model_french_new), timewt = 'n')
+```
+
+
+### French-CRS (new) Brier score
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+df_model_french_new <- subset(df_model_french_new, !is.na(df_model_french_new$predict))
+paste0('French-CRS (New) Brier: ', DescTools::BrierScore(df_model_french_new$death, df_model_french_new$predict))
 ```
 
 
@@ -325,19 +353,20 @@ US-CRS model is obtained from Section 3 of **model_results.Rmd**
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_USCRS.RData')
 
-df_model6 <- df %>% select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
-                           bilirubin, eGFR, sodium, BNP, LVAD, short_MCS_ever)
-df_model6$predict <- predict(model6, newdata = df_model6, type = 'response')
+df_model_us <- df %>% select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
+                           bilirubin, eGFR, sodium, BNP, BNP_NT_Pro, LVAD, short_MCS_ever)
+df_model_us$BNP_NT_Pro <- as.character(df_model_us$BNP_NT_Pro)
+df_model_us$predict <- predict(model_final, newdata = df_model_us, type = 'response')
 
-concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model6), timewt = 'n')
+concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model_us), timewt = 'n')
 ```
 
 
 ### US-CRS Brier score
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-df_model6 <- subset(df_model6, !is.na(df_model6$predict))
-paste0('6-Status Brier: ', DescTools::BrierScore(df_model6$death, df_model6$predict))
+df_model_us <- subset(df_model_us, !is.na(df_model_us$predict))
+paste0('US-CRS Brier: ', DescTools::BrierScore(df_model_us$death, df_model_us$predict))
 ```
 
 
@@ -350,7 +379,7 @@ paste0('6-Status Brier: ', DescTools::BrierScore(df_model6$death, df_model6$pred
 ## Boxplot of predicted risk by status 
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_boxplot <- subset(df_model6, !is.na(df_model6$status))
+df_boxplot <- subset(df_model_us, !is.na(df_model_us$status))
 
 
 df_boxplot %>%
@@ -376,23 +405,23 @@ df_boxplot %>%
 # 6. 50-Point Score Based on RMST
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-model6_rmst <- df_model6
-model6_rmst <- subset(model6_rmst, model6_rmst$t_start <= 365)
-model6_rmst$t_stop[model6_rmst$t_stop > 365] <- 365
+modelus_rmst <- df_model_us
+modelus_rmst <- subset(modelus_rmst, modelus_rmst$t_start <= 365)
+modelus_rmst$t_stop[modelus_rmst$t_stop > 365] <- 365
 
 
-model6_rmst <- model6_rmst %>% 
+modelus_rmst <- modelus_rmst %>% 
   group_by(PX_ID) %>%
   mutate(time_diff = t_stop - t_start) %>%
   mutate(product = time_diff * (1 - predict)) 
 
-model6_rmst <- aggregate(model6_rmst$product, by=list(model6_rmst$PX_ID), FUN=sum)
-colnames(model6_rmst) <- c('PX_ID', 'rmst')
+modelus_rmst <- aggregate(modelus_rmst$product, by=list(modelus_rmst$PX_ID), FUN=sum)
+colnames(modelus_rmst) <- c('PX_ID', 'rmst')
 
 
 
-model6_rmst$score <- 50*(model6_rmst$rmst /365)
-model6_rmst %>%
+modelus_rmst$score <- 50*(modelus_rmst$rmst /365)
+modelus_rmst %>%
   ggplot(aes(x = score)) +
   geom_histogram(fill = '#880d1e') +
   theme_bw() + 
