@@ -30,11 +30,15 @@ Sample iteration of elastic net models with parameter tuning on alpha and lambda
 
 Updated 7/4/2023: Added.
 
+Updated 8/11/2023: Models add NT-proBNP.
+
 
 ### 3. xgboost_mem_vars_model.R
 Sample iteration of gradient-boosted models with parameter tuning. Requires large amount of computational resources. Optional. Estimated runtime of several days on a high-memory node.
 
 Updated 7/4/2023: Added.
+
+Updated 8/11/2023: Models add NT-proBNP.
 
 
 ### 4. model_results.Rmd
