@@ -48,7 +48,7 @@ Updated 7/11/2023: Main figure structure revised, now includes calibration and f
 
 Updated 7/13/2023: Colors changed, confidence intervals added.
 
-Updated 8/9/2023: Models add NT-proBNP.
+Updated 8/9/2023: Models add NT-proBNP, new French-CRS score.
 
 
 ### 5. figures_unblocked.Rmd
@@ -59,3 +59,5 @@ Updated 7/9/2023: Added.
 Updated 7/11/2023: Unblocking method changed to every justification form change.
 
 Updated 7/13/2023: Colors changed.
+
+Updated 8/10/2023: Accounts for NT-proBNP, new French-CRS score.
