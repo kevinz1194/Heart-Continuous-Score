@@ -1474,10 +1474,10 @@ df_intervals <- df_intervals %>%
   mutate(eGFR = case_when(
     
     CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
-      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age*10) * 1.012,
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age) * 1.012,
     
     CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
-      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age*10)))
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age)))
 
 df_intervals$eGFR[df_intervals$dialysis == '1'] <- 0
 df_intervals$eGFR[is.na(df_intervals$eGFR)] <- 100
