@@ -111,6 +111,7 @@ mat_train <- data.frame(cbind(df_intervals[df_intervals$train_test == 'Train', ]
                               df_intervals[df_intervals$train_test == 'Train', ]$sodium, 
                               df_intervals[df_intervals$train_test == 'Train', ]$AST, 
                               df_intervals[df_intervals$train_test == 'Train', ]$BNP,
+                              df_intervals[df_intervals$train_test == 'Train', ]$BNP_NT_Pro,
                               df_intervals[df_intervals$train_test == 'Train', ]$BUN, 
                               df_intervals[df_intervals$train_test == 'Train', ]$INR, 
                               df_intervals[df_intervals$train_test == 'Train', ]$life_arrhythmia,
@@ -180,7 +181,7 @@ names(mat_train) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Interv
                       'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                       'Central_Venous_Pressure', 'Arterial_Lactate', 'PCWP', 
                       'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin',
-                      'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 
+                      'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 
                       'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge', 
                       'TempSurgery_LVAD', 'Other_DurableMCSD',
                       'MCSD_Malfunction', 'VTach_Fib', 'Perc_LVAD', 
@@ -198,7 +199,7 @@ names(mat_train_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'In
                           'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                           'Central_Venous_Pressure', 'Arterial_Lactate', 'PCWP', 
                           'CPO', 'API', 'PAPI','Hemoglobin', 'Albumin',
-                          'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BUN10', 
+                          'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 
                           'INR', 'Life_Arrhythmia', 'BiVAD_NoDischarge', 
                           'TempSurgery_LVAD', 'Other_DurableMCSD',
                           'MCSD_Malfunction', 'VTach_Fib', 'Perc_LVAD', 
@@ -246,7 +247,7 @@ model_elastic_nomem <- caret::train(
     IABP + ECMO + LVAD + MCSD_Complication + SystolicBP + DiastolicBP + 
     PASP + PADP + Heart_Rate10 + Cardiac_Output + Central_Venous_Pressure + 
     Arterial_Lactate + CPO + API + PAPI + Hemoglobin + Albumin + Bilirubin + eGFR  + Sodium + 
-    AST100 + BNP100 + BUN10 + INR + Life_Arrhythmia + BiVAD_NoDischarge + 
+    AST100 + BNP100 + BNP_NT_Pro + BUN10 + INR + Life_Arrhythmia + BiVAD_NoDischarge + 
     TempSurgery_LVAD + Other_DurableMCSD +  MCSD_Malfunction + VTach_Fib + 
     Perc_LVAD + MCSD_Hemolysis + MCSD_Rhf + MCSD_DeviceInfection + MCSD_Bleed +
     MCSD_Aortic_Insufficent + Angina,
@@ -267,7 +268,7 @@ model_elastic_all <- caret::train(
     IABP + ECMO + LVAD + MCSD_Complication + SystolicBP + DiastolicBP + 
     PASP + PADP + Heart_Rate10 + Cardiac_Output + Central_Venous_Pressure + 
     Arterial_Lactate + CPO + API + PAPI + Hemoglobin + Albumin + Bilirubin + eGFR  + Sodium + 
-    AST100 + BNP100 + BUN10 + INR + Life_Arrhythmia + BiVAD_NoDischarge + 
+    AST100 + BNP100 + BNP_NT_Pro + BUN10 + INR + Life_Arrhythmia + BiVAD_NoDischarge + 
     TempSurgery_LVAD + Other_DurableMCSD +  MCSD_Malfunction + VTach_Fib + 
     Perc_LVAD + MCSD_Hemolysis + MCSD_Rhf + MCSD_DeviceInfection + MCSD_Bleed +
     MCSD_Aortic_Insufficent + Angina +
