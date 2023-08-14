@@ -12,14 +12,14 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 1. Set up original modified dataset (Line 36) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 154) -->
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
-<!-- 4. Set up remaining clinical variables (Line 733) -->
+<!-- 4. Set up remaining clinical variables (Line 735) -->
 <!-- 5. Add in BNP type (Line 839) -->
 <!-- 6. Create intervals (Line 857) -->
-<!-- 7. Add memory variables (Line 1114) -->
-<!-- 8. Death in 6 weeks (Line 1256) -->
-<!-- 9. Impute variables (Line 1293) -->
-<!-- 10. Generate new clinical variables (Line 1456) -->
-<!-- 11. Sample checks between blocked and unblocked (Line 1504) -->
+<!-- 7. Add memory variables (Line 1113) -->
+<!-- 8. Death in 6 weeks (Line 1255) -->
+<!-- 9. Impute variables (Line 1292) -->
+<!-- 10. Generate new clinical variables (Line 1455) -->
+<!-- 11. Sample checks between blocked and unblocked (Line 1503) -->
 
 
 
