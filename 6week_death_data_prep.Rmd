@@ -1103,8 +1103,7 @@ df_intervals <- df_intervals %>%
   mutate(BNP = as.numeric(BNP) / 100,
          BUN = as.numeric(BUN) / 10,
          AST = as.numeric(AST) / 100,
-         heart_rate = as.numeric(heart_rate) / 10,
-         age = as.numeric(age) / 10)
+         heart_rate = as.numeric(heart_rate) / 10)
 ```
 
 
