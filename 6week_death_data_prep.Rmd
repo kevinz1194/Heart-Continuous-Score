@@ -12,14 +12,14 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 1. Set up original modified dataset (Line 39) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 157) -->
 <!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 485) -->
-<!-- 4. Set up remaining clinical variables (Line 736) -->
-<!-- 5. Add in BNP type and fix sodium (Line 842) -->
-<!-- 6. Create intervals (Line 862) -->
-<!-- 7. Add memory variables (Line 1118) -->
-<!-- 8. Death in 6 weeks (Line 1260) -->
-<!-- 9. Impute variables (Line 1296) -->
-<!-- 10. Generate new clinical variables (Line 1459) -->
-<!-- 11. Confirm last active date from cand_thor (Line 1507) -->
+<!-- 4. Set up remaining clinical variables (Line ) -->
+<!-- 5. Add in BNP type and fix sodium (Line ) -->
+<!-- 6. Create intervals (Line ) -->
+<!-- 7. Add memory variables (Line ) -->
+<!-- 8. Death in 6 weeks (Line ) -->
+<!-- 9. Impute variables (Line ) -->
+<!-- 10. Generate new clinical variables (Line ) -->
+<!-- 11. Confirm last dates from cand_thor (Line ) -->
 <!-- 12. Sample checks between blocked and unblocked (Line ) -->
 
 
@@ -496,7 +496,8 @@ df_candthor_raw <- df_candthor
 df_candthor <- df_candthor[,c('PX_ID', 'CAN_LISTING_DT', 'PERS_SSA_DEATH_DT',
                               'PERS_OPTN_DEATH_DT', 'CAN_REM_DT', 'CAN_DEATH_DT',
                               'CAN_REM_CD', 'REC_TX_DT', 'CAN_LISTING_CTR_ID',
-                              'CAN_LAST_ACT_STAT_DT', 'CAN_VAD_TY', 'CAN_VAD1', 
+                              'CAN_LAST_ACT_STAT_DT', 'CAN_LAST_INACT_STAT_DT',
+                              'CAN_VAD_TY', 'CAN_VAD1', 
                               'CAN_AGE_IN_MONTHS_AT_LISTING', 'CAN_DGN', 'CAN_DIAB_TY', 'CAN_DIAL', 'CAN_INIT_STAT')]
 
 
@@ -515,13 +516,15 @@ df_candthor <- df_candthor %>%
     transplant_date = as.Date(REC_TX_DT),
     removal_date = as.Date(CAN_REM_DT),
     last_active_date = as.Date(CAN_LAST_ACT_STAT_DT),
+    last_inactive_date = as.Date(CAN_LAST_INACT_STAT_DT),
     death_date = as.Date(CAN_DEATH_DT),
     death_date_max = pmax(CAN_DEATH_DT, PERS_SSA_DEATH_DT, PERS_OPTN_DEATH_DT, na.rm=T)) %>%
   
   mutate(transplant_time = ifelse(!is.na(transplant_date), 
                                   as.numeric(transplant_date - start_date, units='days'), 0)) %>%
   mutate(death_time = ifelse(!is.na(death_date_max), as.numeric(death_date_max - start_date, units='days'), 0)) %>%
-  mutate(removal_time = as.numeric(removal_date - start_date, units='days')) %>%
+  mutate(removal_time = as.numeric(pmax(removal_date, last_active_date, last_inactive_date, na.rm = T) - 
+                                     start_date, units='days')) %>%
   
   
   ## Extra time after removal date in days (can be 0 or negative if no death); cannot be transplanted or dead at removal
@@ -1488,7 +1491,7 @@ df_intervals$eGFR[is.na(df_intervals$eGFR)] <- 100
 ```
 
 
-#### Examine eGFR and kidney to check eGFR
+#### Examine eGFR and kidney to check eGFR- confirmed with online calculator
 ```{r, warning=F, comment=NA, message=F}
 df_intervals %>%
   select(PX_ID, creatinine, age, CAN_GENDER, dialysis, eGFR)
@@ -1504,8 +1507,11 @@ save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 
 ---------------------------------
 
-# 11. Confirm last active date from cand_thor
+# 11. Confirm last dates from cand_thor
 
+```{r}
+
+```
 
 
 ---------------------------------
