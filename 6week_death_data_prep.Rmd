@@ -9,17 +9,18 @@ output:
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
  
-<!-- 1. Set up original modified dataset (Line 36) -->
-<!-- 2. Merge with status justification datasets and create variables (Line 154) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 482) -->
-<!-- 4. Set up remaining clinical variables (Line 735) -->
-<!-- 5. Add in BNP type (Line 839) -->
-<!-- 6. Create intervals (Line 857) -->
-<!-- 7. Add memory variables (Line 1113) -->
-<!-- 8. Death in 6 weeks (Line 1255) -->
-<!-- 9. Impute variables (Line 1292) -->
-<!-- 10. Generate new clinical variables (Line 1455) -->
-<!-- 11. Sample checks between blocked and unblocked (Line 1503) -->
+<!-- 1. Set up original modified dataset (Line 39) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 157) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 485) -->
+<!-- 4. Set up remaining clinical variables (Line 736) -->
+<!-- 5. Add in BNP type and fix sodium (Line 842) -->
+<!-- 6. Create intervals (Line 862) -->
+<!-- 7. Add memory variables (Line 1118) -->
+<!-- 8. Death in 6 weeks (Line 1260) -->
+<!-- 9. Impute variables (Line 1296) -->
+<!-- 10. Generate new clinical variables (Line 1459) -->
+<!-- 11. Confirm last active date from cand_thor (Line 1507) -->
+<!-- 12. Sample checks between blocked and unblocked (Line ) -->
 
 
 
@@ -838,7 +839,7 @@ df <- df %>% select(-c(JustId, events,
 ---------------------------------
 
 
-# 5. Add in BNP type
+# 5. Add in BNP type and fix sodium
 
 ```{r, warning=F, comment=NA, message=F}
 df_riskstrat <- haven::read_sas('./RiskStratDataHR.sas7bdat')
@@ -848,6 +849,10 @@ df_riskstrat <- df_riskstrat %>% select(px_id, HrSevFailNtBnpType)
 df$BNP_NT_Pro <- 0
 df$BNP_NT_Pro[df$PX_ID %in%
                 unique(df_riskstrat$px_id[df_riskstrat$HrSevFailNtBnpType == 'NT Pro BNP'])] <- 1
+
+
+### Assume sodium < 100 is a data entry error
+df$sodium[df$sodium < 100] <- 100
 ```
 
 
@@ -1285,7 +1290,6 @@ df_intervals <- df_intervals %>% select(-c(death_flag, death_time, deathdifferen
 ```
 
 
-
 ---------------------------------
 
 
@@ -1468,6 +1472,7 @@ The formula for eGFR is available at https://www.kidney.org/content/ckd-epi-crea
 
 ```{r, warning=F, comment=NA, message=F}
 df_intervals$creatinine <- as.numeric(df_intervals$creatinine)
+df_intervals$age <- as.numeric(df_intervals$age)
 
 df_intervals <- df_intervals %>%
   mutate(eGFR = case_when(
@@ -1486,7 +1491,7 @@ df_intervals$eGFR[is.na(df_intervals$eGFR)] <- 100
 #### Examine eGFR and kidney to check eGFR
 ```{r, warning=F, comment=NA, message=F}
 df_intervals %>%
-  select(PX_ID, creatinine, CAN_GENDER, dialysis, eGFR)
+  select(PX_ID, creatinine, age, CAN_GENDER, dialysis, eGFR)
 ```
 
 
@@ -1499,8 +1504,14 @@ save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 
 ---------------------------------
 
+# 11. Confirm last active date from cand_thor
 
-# 11. Sample checks between blocked and unblocked
+
+
+---------------------------------
+
+
+# 12. Sample checks between blocked and unblocked
 
 ### A random sample of 10 patients
 ```{r}
