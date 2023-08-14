@@ -9,18 +9,17 @@ output:
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
  
-<!-- 1. Set up original modified dataset (Line 39) -->
-<!-- 2. Merge with status justification datasets and create variables (Line 157) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 485) -->
-<!-- 4. Set up remaining clinical variables (Line ) -->
-<!-- 5. Add in BNP type and fix sodium (Line ) -->
-<!-- 6. Create intervals (Line ) -->
-<!-- 7. Add memory variables (Line ) -->
-<!-- 8. Death in 6 weeks (Line ) -->
-<!-- 9. Impute variables (Line ) -->
-<!-- 10. Generate new clinical variables (Line ) -->
-<!-- 11. Confirm last dates from cand_thor (Line ) -->
-<!-- 12. Sample checks between blocked and unblocked (Line ) -->
+<!-- 1. Set up original modified dataset (Line 38) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 156) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 484) -->
+<!-- 4. Set up remaining clinical variables (Line 738) -->
+<!-- 5. Add in BNP type and fix sodium (Line 844) -->
+<!-- 6. Create intervals (Line 864) -->
+<!-- 7. Add memory variables (Line 1120) -->
+<!-- 8. Death in 6 weeks (Line 1262) -->
+<!-- 9. Impute variables (Line 1298) -->
+<!-- 10. Generate new clinical variables (Line 1461) -->
+<!-- 11. Sample checks between blocked and unblocked (Line 1510) -->
 
 
 
@@ -1507,17 +1506,8 @@ save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 
 ---------------------------------
 
-# 11. Confirm last dates from cand_thor
 
-```{r}
-
-```
-
-
----------------------------------
-
-
-# 12. Sample checks between blocked and unblocked
+# 11. Sample checks between blocked and unblocked
 
 ### A random sample of 10 patients
 ```{r}
