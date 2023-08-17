@@ -7,15 +7,16 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 34) -->
-<!-- 2. Set up matrices for predictions (Line 138) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 594) -->
-<!-- 4. Obtain machine learning model results (Line 1243) -->
-<!-- 5. Make predictions on test dataset (Line 1301) -->
-<!-- 6. Create AUC curves (Line 1348) -->
-<!-- 7. Variable importance plots from gradient-boosted models (Line 1404) -->
-<!-- 8. Create calibration plot in test dataset (Line 1465) -->
-<!-- 9. Create facet plot of 50 point score at initial listing (Line 1513) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 35) -->
+<!-- 2. Set up matrices for predictions (Line 143) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 599) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1293) -->
+<!-- 5. Obtain machine learning model results (Line 1334) -->
+<!-- 6. Make predictions on test dataset (Line 1396) -->
+<!-- 7. Create AUC curves (Line 1450) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1506) -->
+<!-- 9. Create calibration plot in test dataset (Line 1567) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 1615) -->
 
 
 
@@ -112,7 +113,11 @@ df_intervals <- df_intervals %>%
              TRUE ~ 0)) %>% 
   mutate(short_MCS_ever = 
            case_when(ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
-             TRUE ~ 0))
+             TRUE ~ 0),
+         
+         short_MCS_ever_with_BP = case_when(
+           IABP_ever == '1' ~ 1,
+           TRUE ~ short_MCS_ever))
 
 
 
@@ -607,7 +612,7 @@ save(model6status, file = './model_6status.RData')
 ```
 
 
-### Selected Model #1: French candidate risk score
+### Selected Model #1: Prior French score (includes balloon pumps)
 
 * Short term MCS (ECMO or Balloon Pump)
 * Natural log of (bilirubin + 1)
@@ -616,30 +621,30 @@ save(model6status, file = './model_6status.RData')
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model1 <- glm(formula = as.formula(
+model_french_old <- glm(formula = as.formula(
   death6week ~ 
     short_MCS_French + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model1_results <- as.data.frame(summary(model1)$coefficients)
-model1_results$name <- rownames(model1_results)
+model_french_old_results <- as.data.frame(summary(model_french_old)$coefficients)
+model_french_old_results$name <- rownames(model_french_old_results)
 
-model1_results <- model1_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model1_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model1_results) <- seq(1:nrow(model1_results))
-model1_results <- model1_results %>% 
+model_french_old_results <- model_french_old_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_french_old_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_french_old_results) <- seq(1:nrow(model_french_old_results))
+model_french_old_results <- model_french_old_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model1_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
+model_french_old_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
 
-model1_results %>%
+model_french_old_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
 
-save(model1, file = './model_frenchCRS.RData')
+save(model_french_old, file = './model_frenchCRS_old.RData')
 ```
 
 
@@ -647,30 +652,30 @@ save(model1, file = './model_frenchCRS.RData')
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model2 <- glm(formula = as.formula(
+model_french_new <- glm(formula = as.formula(
   death6week ~ 
     short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model2_results <- as.data.frame(summary(model2)$coefficients)
-model2_results$name <- rownames(model2_results)
+model_french_new_results <- as.data.frame(summary(model_french_new)$coefficients)
+model_french_new_results$name <- rownames(model_french_new_results)
 
-model2_results <- model2_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model2_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model2_results) <- seq(1:nrow(model2_results))
-model2_results <- model2_results %>% 
+model_french_new_results <- model_french_new_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_french_new_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_french_new_results) <- seq(1:nrow(model_french_new_results))
+model_french_new_results <- model_french_new_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model2_results$Variable <- c('Intercept', 'Short Term MCS (New)', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
+model_french_new_results$Variable <- c('Intercept', 'Short Term MCS (New)', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
 
-model2_results %>%
+model_french_new_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
 
-save(model2, file = './model_frenchCRS_new.RData')
+save(model_french_new, file = './model_frenchCRS_new.RData')
 ```
 
 
@@ -689,37 +694,37 @@ save(model2, file = './model_frenchCRS_new.RData')
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model3 <- glm(formula = as.formula(
+model_PCWP <- glm(formula = as.formula(
   death6week ~ 
     PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model3_results <- as.data.frame(summary(model3)$coefficients)
-model3_results$name <- rownames(model3_results)
+model_PCWP_results <- as.data.frame(summary(model_PCWP)$coefficients)
+model_PCWP_results$name <- rownames(model_PCWP_results)
 
-model3_results <- model3_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model3_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model3_results) <- seq(1:nrow(model3_results))
-model3_results <- model3_results %>% 
+model_PCWP_results <- model_PCWP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_PCWP_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_PCWP_results) <- seq(1:nrow(model_PCWP_results))
+model_PCWP_results <- model_PCWP_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model3_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 'NT-proBNP Interaction')
+model_PCWP_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 
+                             'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                             'Log BNP+1, Regular BNP',
+                             'Log BNP+1, NT-proBNP')
 
-model3_results %>%
+model_PCWP_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
 ```
 
 
-### Selected Model #4: US candidate risk score replacing PCWP
+### Selected Model #4: US candidate risk score with CPO, API
 
 * Replaces PCWP with Cardiac Pressure Output (CPO) and Aortic Pulsatility Index (API)
 * CPO = (1/541) x (Cardiac Output) x (2/3 x Systolic BP  +  1/3 x Diastolic BP)
@@ -737,29 +742,31 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'p
 #### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model4 <- glm(formula = as.formula(
+model_CPO_API <- glm(formula = as.formula(
   death6week ~ 
     cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model4_results <- as.data.frame(summary(model4)$coefficients)
-model4_results$name <- rownames(model4_results)
+model_CPO_API_results <- as.data.frame(summary(model_CPO_API)$coefficients)
+model_CPO_API_results$name <- rownames(model_CPO_API_results)
 
-model4_results <- model4_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model4_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model4_results) <- seq(1:nrow(model4_results))
-model4_results <- model4_results %>% 
+model_CPO_API_results <- model_CPO_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_CPO_API_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_CPO_API_results) <- seq(1:nrow(model_CPO_API_results))
+model_CPO_API_results <- model_CPO_API_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model4_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 'Log Bilirubin+1', 'eGFR', 
-                             'Sodium', 'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 'NT-proBNP Interaction')
+model_CPO_API_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 
+                                    'Log Bilirubin+1', 'eGFR', 
+                                    'Sodium', 'LVAD', 'Short MCS Ever', 
+                                    'Log BNP+1, Regular BNP',
+                                    'Log BNP+1, NT-proBNP')
 
-model4_results %>%
+model_CPO_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -770,30 +777,30 @@ model4_results %>%
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model5 <- glm(formula = as.formula(
+model_CPO <- glm(formula = as.formula(
   death6week ~ 
     cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model5_results <- as.data.frame(summary(model5)$coefficients)
-model5_results$name <- rownames(model5_results)
+model_CPO_results <- as.data.frame(summary(model_CPO)$coefficients)
+model_CPO_results$name <- rownames(model_CPO_results)
 
-model5_results <- model5_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model5_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model5_results) <- seq(1:nrow(model5_results))
-model5_results <- model5_results %>% 
+model_CPO_results <- model_CPO_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_CPO_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_CPO_results) <- seq(1:nrow(model_CPO_results))
+model_CPO_results <- model_CPO_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model5_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_CPO_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 
+                                'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                'Log BNP+1, Regular BNP',
+                                'Log BNP+1, NT-proBNP')
 
-model5_results %>%
+model_CPO_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -804,31 +811,31 @@ model5_results %>%
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model6 <- glm(formula = as.formula(
+model_API <- glm(formula = as.formula(
   death6week ~ 
     api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model6_results <- as.data.frame(summary(model6)$coefficients)
-model6_results$name <- rownames(model6_results)
+model_API_results <- as.data.frame(summary(model_API)$coefficients)
+model_API_results$name <- rownames(model_API_results)
 
-model6_results <- model6_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model6_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model6_results) <- seq(1:nrow(model6_results))
-model6_results <- model6_results %>% 
+model_API_results <- model_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_API_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_API_results) <- seq(1:nrow(model_API_results))
+model_API_results <- model_API_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model6_results$Variable <- c('Intercept', 'API', 'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium',                          
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_API_results$Variable <- c('Intercept', 'API', 'Albumin', 
+                                'Log Bilirubin+1', 'eGFR', 'Sodium',                          
+                                'LVAD', 'Short MCS Ever',
+                                'Log BNP+1, Regular BNP',
+                                'Log BNP+1, NT-proBNP')
 
-model6_results %>%
+model_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -844,40 +851,42 @@ model6_results %>%
 #### Check that CPO and PAPi are not heavily correlated
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
-paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
+paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$papi, 
+                                   use = 'pairwise.complete.obs', method = 'pearson'))
+paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, 
+                                    use = 'pairwise.complete.obs', method = 'spearman'))
 ```
 
 
 #### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model7 <- glm(formula = as.formula(
+model_PAPI_CPO <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model7_results <- as.data.frame(summary(model7)$coefficients)
-model7_results$name <- rownames(model7_results)
+model_PAPI_CPO_results <- as.data.frame(summary(model_PAPI_CPO)$coefficients)
+model_PAPI_CPO_results$name <- rownames(model_PAPI_CPO_results)
 
-model7_results <- model7_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model7_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model7_results) <- seq(1:nrow(model7_results))
-model7_results <- model7_results %>% 
+model_PAPI_CPO_results <- model_PAPI_CPO_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_PAPI_CPO_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_PAPI_CPO_results) <- seq(1:nrow(model_PAPI_CPO_results))
+model_PAPI_CPO_results <- model_PAPI_CPO_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model7_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1',
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_PAPI_CPO_results$Variable <- c('Intercept', 'CPO', 'PAPi', 
+                                     'Albumin', 'Log Bilirubin+1',
+                                     'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                     'Log BNP+1, Regular BNP',
+                                     'Log BNP+1, NT-proBNP')
 
-model7_results %>%
+model_PAPI_CPO_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -889,40 +898,42 @@ model7_results %>%
 #### Correlation between PAPi and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'pearson'))
-paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, use = 'pairwise.complete.obs', method = 'spearman'))
+paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi,
+                                   use = 'pairwise.complete.obs', method = 'pearson'))
+paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, 
+                                    use = 'pairwise.complete.obs', method = 'spearman'))
 ```
 
 
 #### Model results
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model8 <- glm(formula = as.formula(
+model_PAPI <- glm(formula = as.formula(
   death6week ~ 
     papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) +
+    (log(BNP + 1):BNP_NT_Pro) +
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model8_results <- as.data.frame(summary(model8)$coefficients)
-model8_results$name <- rownames(model8_results)
+model_PAPI_results <- as.data.frame(summary(model_PAPI)$coefficients)
+model_PAPI_results$name <- rownames(model_PAPI_results)
 
-model8_results <- model8_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model8_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model8_results) <- seq(1:nrow(model8_results))
-model8_results <- model8_results %>% 
+model_PAPI_results <- model_PAPI_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_PAPI_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_PAPI_results) <- seq(1:nrow(model_PAPI_results))
+model_PAPI_results <- model_PAPI_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model8_results$Variable <- c('Intercept', 'PAPi', 'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_PAPI_results$Variable <- c('Intercept', 'PAPi', 
+                                 'Albumin', 'Log Bilirubin+1', 
+                                 'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                 'Log BNP+1, Regular BNP',
+                                 'Log BNP+1, NT-proBNP')
 
-model8_results %>%
+model_PAPI_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -932,33 +943,33 @@ model8_results %>%
 ### Selected Model #9: US candidate risk score with PAPi, AST, and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model9 <- glm(formula = as.formula(
+model_CPO_PAPI_AST_API <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + api + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) +
+    (log(BNP + 1):BNP_NT_Pro) +
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model9_results <- as.data.frame(summary(model9)$coefficients)
-model9_results$name <- rownames(model9_results)
+model_CPO_PAPI_AST_API_results <- as.data.frame(summary(model_CPO_PAPI_AST_API)$coefficients)
+model_CPO_PAPI_AST_API_results$name <- rownames(model_CPO_PAPI_AST_API_results)
 
-model9_results <- model9_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model9_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model9_results) <- seq(1:nrow(model9_results))
-model9_results <- model9_results %>% 
+model_CPO_PAPI_AST_API_results <- model_CPO_PAPI_AST_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_CPO_PAPI_AST_API_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_CPO_PAPI_AST_API_results) <- seq(1:nrow(model_CPO_PAPI_AST_API_results))
+model_CPO_PAPI_AST_API_results <- model_CPO_PAPI_AST_API_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model9_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 'AST',
-                             'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_CPO_PAPI_AST_API_results$Variable <- c('Intercept', 'CPO', 'PAPi', 
+                                         'API', 'AST', 'Albumin', 
+                                         'Log Bilirubin+1', 'eGFR', 'Sodium', 
+                                         'LVAD', 'Short MCS Ever', 
+                                         'Log BNP+1, Regular BNP',
+                                         'Log BNP+1, NT-proBNP')
 
-model9_results %>%
+model_CPO_PAPI_AST_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -968,32 +979,33 @@ model9_results %>%
 ### Selected Model #10: US candidate risk score with PAPi and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model10 <- glm(formula = as.formula(
+model_CPO_PAPI_API <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) +
+    (log(BNP + 1):BNP_NT_Pro) +
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model10_results <- as.data.frame(summary(model10)$coefficients)
-model10_results$name <- rownames(model10_results)
+model_CPO_PAPI_API_results <- as.data.frame(summary(model_CPO_PAPI_API)$coefficients)
+model_CPO_PAPI_API_results$name <- rownames(model_CPO_PAPI_API_results)
 
-model10_results <- model10_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model10_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model10_results) <- seq(1:nrow(model10_results))
-model10_results <- model10_results %>% 
+model_CPO_PAPI_API_results <- model_CPO_PAPI_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_CPO_PAPI_API_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_CPO_PAPI_API_results) <- seq(1:nrow(model_CPO_PAPI_API_results))
+model_CPO_PAPI_API_results <- model_CPO_PAPI_API_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model10_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'API', 
-                             'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_CPO_PAPI_API_results$Variable <- c('Intercept', 
+                                         'CPO', 'PAPi', 'API', 
+                                         'Albumin', 'Log Bilirubin+1', 
+                                         'eGFR', 'Sodium', 
+                                         'LVAD', 'Short MCS Ever', 
+                                         'Log BNP+1, Regular BNP',
+                                         'Log BNP+1, NT-proBNP')
 
-model10_results %>%
+model_CPO_PAPI_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
@@ -1003,60 +1015,80 @@ model10_results %>%
 ### Selected Model #11: US candidate risk score with PAPi and AST
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model11 <- glm(formula = as.formula(
+model_CPO_PAPI_AST <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    (log(BNP + 1)*BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model11_results <- as.data.frame(summary(model11)$coefficients)
-model11_results$name <- rownames(model11_results)
+model_CPO_PAPI_AST_results <- as.data.frame(summary(model_CPO_PAPI_AST)$coefficients)
+model_CPO_PAPI_AST_results$name <- rownames(model_CPO_PAPI_AST_results)
 
-model11_results <- model11_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model11_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model11_results) <- seq(1:nrow(model11_results))
-model11_results <- model11_results %>% 
+model_CPO_PAPI_AST_results <- model_CPO_PAPI_AST_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_CPO_PAPI_AST_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_CPO_PAPI_AST_results) <- seq(1:nrow(model_CPO_PAPI_AST_results))
+model_CPO_PAPI_AST_results <- model_CPO_PAPI_AST_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model11_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'AST', 
-                             'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium',                              
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever', 
-                             'NT-proBNP Interaction')
+model_CPO_PAPI_AST_results$Variable <- c('Intercept', 
+                                         'CPO', 'PAPi', 'AST', 
+                                         'Albumin', 'Log Bilirubin+1', 
+                                         'eGFR', 'Sodium',                              
+                                         'LVAD', 'Short MCS Ever', 
+                                         'Log BNP+1, Regular BNP',
+                                         'Log BNP+1, NT-proBNP')
 
-model11_results %>%
+model_CPO_PAPI_AST_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
 ```
 
 
-### Compare model AICs and BICs
+### Compare model fits
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_comparison <- data.frame(
-  'Model' = c('1 (French)', 
-              '2 (New French)',
-              '3 (US-CRS with PCWP)', 
-              '4 (US-CRS with CPO and API)', 
-              '5 (US-CRS with CPO Only)',
-              '6 (US-CRS with API Only)',
-              '7 (US-CRS with CPO and PAPi)',
-              '8 (US-CRS with PAPi Only)',
-              '9 (US-CRS with PAPi, API, AST)',
-              '10 (US-CRS with PAPi and API)',
-              '11 (US-CRS with PAPi and AST)'),
-  'AIC' = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model5), 
-            AIC(model6), AIC(model7), AIC(model8), AIC(model9), AIC(model10),
-            AIC(model11)),
-  'BIC' = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model5), 
-            BIC(model6), BIC(model7), BIC(model8), BIC(model9), BIC(model10),
-            BIC(model11)))
+  'Model' = c('Old French', 
+              'New French',
+              'US-CRS with PCWP', 
+              'US-CRS with CPO and API', 
+              'US-CRS with CPO Only',
+              'US-CRS with API Only',
+              'US-CRS with CPO and PAPi',
+              'US-CRS with PAPi Only',
+              'US-CRS with PAPi, API, AST',
+              'US-CRS with PAPi and API',
+              'US-CRS with PAPi and AST'),
+  
+  'AIC' = c(AIC(model_french_old), 
+            AIC(model_french_new), 
+            AIC(model_PCWP), 
+            AIC(model_CPO_API), 
+            AIC(model_CPO), 
+            AIC(model_API), 
+            AIC(model_PAPI_CPO), 
+            AIC(model_PAPI), 
+            AIC(model_CPO_PAPI_AST_API), 
+            AIC(model_CPO_PAPI_API),
+            AIC(model_CPO_PAPI_AST)),
+  
+  
+    'BIC' = c(BIC(model_french_old), 
+            BIC(model_french_new), 
+            BIC(model_PCWP), 
+            BIC(model_CPO_API), 
+            BIC(model_CPO), 
+            BIC(model_API), 
+            BIC(model_PAPI_CPO), 
+            BIC(model_PAPI), 
+            BIC(model_CPO_PAPI_AST_API), 
+            BIC(model_CPO_PAPI_API),
+            BIC(model_CPO_PAPI_AST)))
 
 model_comparison$AIC <- round(model_comparison$AIC, 3)
 model_comparison$BIC <- round(model_comparison$BIC, 3)
@@ -1069,14 +1101,14 @@ model_comparison %>%
 ```
 
 
-### Final US-CRS model (no interaction term)
+### Final US-CRS model: CPO, PAPi
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_final <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    (log(BNP + 1) + BNP_NT_Pro) + 
+    (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
@@ -1091,10 +1123,12 @@ model_final_results <- model_final_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model_final_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin+1',
-                             'eGFR', 'Sodium', 
-                             'Log BNP+1', 'NT-proBNP',
-                             'LVAD', 'Short MCS Ever')
+model_final_results$Variable <- c('Intercept', 'CPO', 
+                                  'PAPi', 'Albumin', 'Log Bilirubin+1',
+                                  'eGFR', 'Sodium', 
+                                  'LVAD', 'Short MCS Ever',
+                                  'Log BNP+1, Regular BNP',
+                                  'Log BNP+1, NT-proBNP')
 
 model_final_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -1120,33 +1154,45 @@ colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
 df_coefplot$french_est <- NA
 df_coefplot$french_stderr <- NA
 
-df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- summary(model2)$coefficients['short_MCS_French_new', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- 
+  summary(model_french_new)$coefficients['short_MCS_French_new', 'Estimate']
 df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  summary(model2)$coefficients['log(bilirubin + 1)', 'Estimate']
-df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- summary(model2)$coefficients['eGFR', 'Estimate']
-df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1)'] <- summary(model2)$coefficients['log(BNP + 1)', 'Estimate']
+  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- 
+  summary(model_french_new)$coefficients['eGFR', 'Estimate']
+
+### Assumes the French coefficient for BNP is for non nT-proBNP
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1)', 'Estimate']
 
 
 df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
-  summary(model2)$coefficients['short_MCS_French_new', 'Std. Error']
+  summary(model_french_new)$coefficients['short_MCS_French_new', 'Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  summary(model2)$coefficients['log(bilirubin + 1)', 'Std. Error']
-df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- summary(model2)$coefficients['eGFR', 'Std. Error']
-df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1)'] <- summary(model2)$coefficients['log(BNP + 1)', 'Std. Error']
+  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- 
+  summary(model_french_new)$coefficients['eGFR', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1)', 'Std. Error']
 
 
 df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
-df_coefplot$var <- c('(Intercept)', 'CPO', 'PAPi', 'Albumin', 'Log Bilirubin', 
-'eGFR', 'Sodium', 'Log BNP', 'NT-proBNP', 'Durable LVAD', 'Short-Term MCS')
 df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
+
+df_coefplot$var <- c('CPO', 'PAPi', 'Albumin', 'Log Bilirubin', 
+'eGFR', 'Sodium', 'Durable LVAD', 'Short-Term MCS', 
+'Log BNP, Regular BNP', 'Log BNP, NT-proBNP')
+
 
 
 df_coefplot <- df_coefplot %>%
   arrange(sapply(var, 
                  function(x) 
-                   which(x == c('Short-Term MCS', 'Log Bilirubin', 
-                                'eGFR', 'Log BNP', 'NT-proBNP', 
-                                'CPO', 'PAPi', 'Albumin', 'Sodium', 'Durable LVAD'))))
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP, Regular BNP', 
+                                'Log BNP, NT-proBNP',
+                                'CPO', 'PAPi', 'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
 
 
 ### Scale certain estimates
@@ -1200,7 +1246,8 @@ df_coefplot <- df_coefplot %>%
   arrange(sapply(var, 
                  function(x) 
                    which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
-                                'Log BNP', 'NT-proBNP',
+                                'Log BNP, Regular BNP',
+                                'Log BNP, NT-proBNP', 
                                 'CPO', 'PAPi', 'Albumin', 
                                 'Sodium', 'Durable LVAD'))))
 
@@ -1208,17 +1255,21 @@ df_coefplot <- df_coefplot %>%
 
 df_coefplot %>%
   ggplot(aes(x=est, 
-             y=factor(var, levels = c('Durable LVAD', 'Sodium', 'Albumin', 'PAPi', 'CPO', 
-                                      'NT-proBNP', 'Log BNP', 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium', 
+                                      'Albumin', 'PAPi', 'CPO', 
+                                      'Log BNP, NT-proBNP',
+                                      'Log BNP, Regular BNP',
                                       'eGFR', 'Log Bilirubin', 
                                       'Short-Term MCS')), 
              color=model)) +
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
-  geom_errorbarh(aes(xmin = lower, xmax = upper), width = 0.05, position = position_dodge(width = 0.7)) +
-  geom_vline(xintercept = 0, lty = 2, color = '#880d1e') +
+  geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
+  geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
   xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
-                            expression('PAPi'^'c'), 'CPO', 'NT-proBNP', 'Log BNP', 
+                            expression('PAPi'^'c'), 'CPO', 
+                            'Log BNP, NT-proBNP', 
+                            'Log BNP, Regular BNP', 
                             expression('eGFR'^'b'), 'Log Bilirubin', 
                             expression('Short-Term MCS'^'a'))) +
   scale_colour_manual(name='Model',
@@ -1239,25 +1290,69 @@ df_coefplot %>%
 
 -------------
 
+# 4. Run sensitivity logistic regression models
 
-# 4. Obtain machine learning model results 
+### US-CRS with balloon pumps in short-term MCS
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model_final <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever_with_BP), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final_results <- as.data.frame(summary(model_final)$coefficients)
+model_final_results$name <- rownames(model_final_results)
+
+model_final_results <- model_final_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_final_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_final_results) <- seq(1:nrow(model_final_results))
+model_final_results <- model_final_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_final_results$Variable <- c('Intercept', 'CPO', 
+                                  'PAPi', 'Albumin', 'Log Bilirubin+1',
+                                  'eGFR', 'Sodium', 
+                                  'LVAD', 'Short MCS Ever',
+                                  'Log BNP+1, Regular BNP',
+                                  'Log BNP+1, NT-proBNP')
+
+model_final_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+-------------
+
+
+# 5. Obtain machine learning model results 
 
 ### Elastic Net Regression, No Memory Variables
-Results are obtained from **elastic_net_model.R**.
-
+Results from the elastic net regressions are obtained from **elastic_net_model.R**.
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 load('./Models/model_elastic_nomem_6wk.RData')
 
 model_elastic_nomem_results <- data.frame(
   'Variable' = rownames(
-    coef(model_elastic_nomem$finalModel, model_elastic_nomem$bestTune$lambda, model_elastic_nomem$bestTune$alpha)),
+    coef(model_elastic_nomem$finalModel, 
+         model_elastic_nomem$bestTune$lambda, 
+         model_elastic_nomem$bestTune$alpha)),
   
   'Estimate' = as.numeric(
-    coef(model_elastic_nomem$finalModel, model_elastic_nomem$bestTune$lambda, model_elastic_nomem$bestTune$alpha)))
+    coef(model_elastic_nomem$finalModel, 
+         model_elastic_nomem$bestTune$lambda, 
+         model_elastic_nomem$bestTune$alpha)))
 
 
-model_elastic_nomem_results[ ,'Estimate'] <- signif(model_elastic_nomem_results[ ,'Estimate'], 2)
+model_elastic_nomem_results[ ,'Estimate'] <- 
+  signif(model_elastic_nomem_results[ ,'Estimate'], 2)
 model_elastic_nomem_results %>%
   kable(align=c('c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
@@ -1298,18 +1393,18 @@ load('./Models/model_xgboost_mem_final.RData')
 -------------
 
 
-# 5. Make predictions on test dataset
+# 6. Make predictions on test dataset
 
 ```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-model1_predict <- as.numeric(
-  predict(model1, newdata = df_intervals_test, type = 'response'))
-model1_indices <- which(!is.na(model1_predict))
-model1_predict <- na.omit(model1_predict)
+model_french_old_predict <- as.numeric(
+  predict(model_french_old, newdata = df_intervals_test, type = 'response'))
+model_french_old_indices <- which(!is.na(model_french_old_predict))
+model_french_old_predict <- na.omit(model_french_old_predict)
 
-model2_predict <- as.numeric(
-  predict(model2, newdata = df_intervals_test, type = 'response'))
-model2_indices <- which(!is.na(model2_predict))
-model2_predict <- na.omit(model2_predict)
+model_french_new_predict <- as.numeric(
+  predict(model_french_new, newdata = df_intervals_test, type = 'response'))
+model_french_new_indices <- which(!is.na(model_french_new_predict))
+model_french_new_predict <- na.omit(model_french_new_predict)
 
 model_final_predict <- as.numeric(
   predict(model_final, newdata = df_intervals_test, type = 'response'))
@@ -1318,11 +1413,15 @@ model_final_predict <- na.omit(model_final_predict)
 
 
 
-elastic_nomem_predict <- predict(model_elastic_nomem, newdata = mat_test, type = 'prob', na.action = na.pass)[,'1']
+elastic_nomem_predict <- predict(model_elastic_nomem, 
+                                 newdata = mat_test, type = 'prob', 
+                                 na.action = na.pass)[,'1']
 nomem_indices <- which(!is.na(elastic_nomem_predict))
 elastic_nomem_predict<- na.omit(elastic_nomem_predict)
 
-elastic_all_predict <- predict(model_elastic_all, newdata = mat_test_all, type = 'prob', na.action = na.pass)[,'1']
+elastic_all_predict <- predict(model_elastic_all, 
+                               newdata = mat_test_all, type = 'prob', 
+                               na.action = na.pass)[,'1']
 mem_indices <- which(!is.na(elastic_all_predict))
 elastic_all_predict<- na.omit(elastic_all_predict)
 
@@ -1336,18 +1435,21 @@ rownames(df_intervals_test) <- seq(1:nrow(df_intervals_test))
 df_intervals_test_nomem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% nomem_indices), ]
 df_intervals_test_mem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% mem_indices), ]
 
-df_intervals_test_model1 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model1_indices), ]
-df_intervals_test_model2 <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model2_indices), ]
-df_intervals_test_model_final <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
+df_intervals_test_model_french_old <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_old_indices), ]
+df_intervals_test_model_french_new <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_new_indices), ]
+df_intervals_test_model_final <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
 ```
 
 
 -------------
 
 
-# 6. Create AUC curves
+# 7. Create AUC curves
 
-### ROC curve for models with all memory variables (eFigure 5)
+### ROC curve for models with all memory variables (eFigure 4)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 # dev.new(width = 7,height = 6, noRStudioGD = T)
@@ -1359,7 +1461,7 @@ pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<',
 pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no', 
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
-pROC::roc(df_intervals_test_model2$death6week ~ model2_predict, direction='<',
+pROC::roc(df_intervals_test_model_french_old$death6week ~ model_french_old_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
@@ -1369,7 +1471,7 @@ legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
-                 'Current French CRS',
+                 'Prior French CRS',
                  'US CRS'),
        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
@@ -1386,7 +1488,7 @@ pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial,
           print.thres.pattern= "Status%2.f",
           print.auc.cex = 1.2,
           legacy.axes=T)
-pROC::roc(df_intervals_test_model2$death6week ~ model2_predict, direction='<',
+pROC::roc(df_intervals_test_model_french_new$death6week ~ model_french_new_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
@@ -1401,7 +1503,7 @@ legend('bottomright', xpd = T,
 -------------
 
 
-# 7. Variable importance plots from gradient-boosted models
+# 8. Variable importance plots from gradient-boosted models
 
 ## Variable importance for XGBoost, No Memory
 
@@ -1455,14 +1557,14 @@ p2 <- p2 +
 
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-cowplot::plot_grid(p1, p2, labels = 'AUTO')
+cowplot::plot_grid(p1, p2, labels = 'AUTO', scale = 0.9)
 ```
 
 
 -------------
 
 
-# 8. Create calibration plot in test dataset (Figure 4)
+# 9. Create calibration plot in test dataset (Figure 4)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 ## Convert first to 50-point medical urgency score
@@ -1510,7 +1612,7 @@ df_intervals_test %>%
 -------------
 
 
-# 9. Create facet plot of 50 point score at initial listing (Figure 3)
+# 10. Create facet plot of 50 point score at initial listing (Figure 3)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_intervals$uscrs_predict <- predict(model_final, newdata = df_intervals)
