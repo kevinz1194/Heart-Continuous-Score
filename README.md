@@ -22,9 +22,9 @@ Updated 7/9/2023: Added.
 
 Updated 7/11/2023: Imputation procedure changed, code cleaned to fully account for edge cases.
 
-Updated 8/6/2023: BNP type added.
+Updated 8/6/2023: BNP type (NT-proBNP) accounted for.
 
-Updated 8/14/2023: Added sodium changes and last inactive date.
+Updated 8/14/2023: Added lower bound for sodium, and censoring date now uses the maximum of removal date, last active date, or last inactive date.
 
 
 ### 2. elastic_net_model.R
@@ -56,9 +56,11 @@ Updated 7/13/2023: Colors changed, confidence intervals added.
 
 Updated 8/11/2023: Models add NT-proBNP, new French-CRS score.
 
+Updated 8/17/2023: Sensitivity analysis using MCS without balloon pump added. 
 
-### 5. figures_unblocked.Rmd
-Figures from the full, unblocked (no 14-day intervals) dataset. 
+
+### 5. results_unblocked.Rmd
+Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
 
 Updated 7/9/2023: Added.
 
@@ -67,3 +69,5 @@ Updated 7/11/2023: Unblocking method changed to every justification form change.
 Updated 7/13/2023: Colors changed.
 
 Updated 8/11/2023: Accounts for NT-proBNP, new French-CRS score.
+
+Updayed 8/17/2023: Name changed, updated to work with new data.
