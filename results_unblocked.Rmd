@@ -8,12 +8,14 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 31) -->
-<!-- 2. Comparison of training and testing datasets (Line 78) -->
-<!-- 3. 3. Impute values into unblocked dataset (Line 175) -->
-<!-- 4. Make predictions on unblocked dataset and calculate discrimination measurements (Line 281) -->
-<!-- 5. Make prediction figures on unblocked dataset (Line 376) -->
-<!-- 6. 50-Point Score Based on RMST (Line 405) -->
+<!-- 1. Set up continuous dataset (Line 33) -->
+<!-- 2. Comparison of training and testing datasets (Line 80) -->
+<!-- 3. Find missing % at listing (Line 183) -->
+<!-- 4. Impute values into unblocked dataset (Line 212) -->
+<!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 321) -->
+<!-- 6. Cox PH with US-CRS predictors on unblocked (Line 421) -->
+<!-- 7. Make prediction figures on unblocked dataset (Line 436) -->
+
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -88,6 +90,7 @@ Includes these initial variables at listing:
 - eGFR
 - Sodium
 - BNP
+- BNP Type
 - Pulmonary Systolic BP, Pulmonary Diastolic BP
 - Central Venous Pressure
 - CPO
@@ -97,20 +100,23 @@ Includes these initial variables at listing:
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 df_table1 <- df %>%
   select(PX_ID, train_test, status, age, albumin,
-         bilirubin, creatinine, sodium, BNP, PASP, PADP, central_venous_pressure,
-         systolicBP, diastolicBP, cardiac_output, CAN_GENDER, CAN_RACE, dialysis) %>%
+         bilirubin, creatinine, sodium, BNP, BNP_NT_Pro,
+         PASP, PADP, central_venous_pressure,
+         systolicBP, diastolicBP, cardiac_output, 
+         CAN_GENDER, CAN_RACE, dialysis) %>%
   group_by(PX_ID) %>%
-  filter(row_number() == 1)
+  filter(row_number() == 1) %>%
+  mutate(age = as.numeric(age))
 
 
 ### Recreate eGFR and race
 df_table1 <- df_table1 %>%
   mutate(eGFR = case_when(
     CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
-      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age * 1.012,
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age) * 1.012,
     
     CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
-      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^age)) %>%
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age))) %>%
   
   mutate(race = case_when(
     CAN_RACE == '8' ~ 'White',
@@ -134,10 +140,11 @@ df_table1$papi[df_table1$papi < 1 & !is.na(df_table1$papi)] <- 1
 
 df_table1$train_test <- factor(df_table1$train_test, levels = c('Train', 'Test'))
 df_table1 <- df_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race', 
-                                           'status', 'albumin', 'bilirubin', 'eGFR',
-                                           'sodium', 'BNP', 'cardiac_output', 
-                                           'PASP', 'PADP', 'systolicBP', 'diastolicBP',
-                                           'central_venous_pressure', 'cpo', 'papi')]
+                           'status', 'albumin', 'bilirubin', 'eGFR',
+                           'sodium', 'BNP', 'BNP_NT_Pro', 'cardiac_output', 
+                           'PASP', 'PADP', 'systolicBP', 'diastolicBP',
+                           'central_venous_pressure', 'cpo', 'papi')]
+df_table1$BNP_NT_Pro <- as.factor(df_table1$BNP_NT_Pro)
 
 
 df_table1 %>%
@@ -154,6 +161,7 @@ df_table1 %>%
                         eGFR ~ 'eGFR, mean (SD), mL/min/1.73m2',
                         sodium ~ 'Sodium, mean (SD), mEq/L',
                         BNP ~ 'BNP, mean (SD), pg/mL',
+                        BNP_NT_Pro ~ 'NT pro-BNP, No. (%)',
                         cardiac_output ~ 'Cardiac output, mean (SD), L/min',
                         PASP ~ 'Pulmonary Systolic BP, mean (SD), mm Hg',
                         PADP ~ 'Pulmonary Diastolic BP, mean (SD), mm Hg',
@@ -172,7 +180,36 @@ df_table1 %>%
 ---------------------------------
 
 
-# 3. Impute values into unblocked dataset
+# 3. Find missing % at listing
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+df_missings <- df %>%
+  select(PX_ID, BNP, sodium, cardiac_output,
+         central_venous_pressure, PASP, PADP, 
+         systolicBP, diastolicBP, PCWP,
+         CAN_GENDER, creatinine, age) %>%
+  group_by(PX_ID) %>%
+  filter(row_number() == 1) %>%
+  mutate(age = as.numeric(age))
+
+
+df_missings <- df_missings %>%
+  mutate(eGFR = case_when(
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age) * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age)))
+
+100*colMeans(is.na(df_missings))
+```
+
+
+
+---------------------------------
+
+
+# 4. Impute values into unblocked dataset
 
 ### Impute using the same rules
 
@@ -226,15 +263,18 @@ df <- df %>%
   fill(temp_surg_ever, .direction = 'down') %>%
   fill(BiVAD_no_discharge_ever, .direction = 'down') %>%
   
+  mutate(ECMO_ever = case_when(is.na(ECMO_ever) ~ '0', TRUE ~ ECMO_ever)) %>%
+  mutate(temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ temp_surg_ever)) %>%
+  mutate(BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ BiVAD_no_discharge_ever)) %>%
+  
+  
   mutate(short_MCS_French = 
            case_when(
              (ECMO == '1' & status == '1') | IABP == '1' ~ 1,
              TRUE ~ 0)) %>% 
-  
   mutate(short_MCS_French_new = 
            case_when((ECMO == '1' & status == '1') ~ 1,
              TRUE ~ 0)) %>% 
-  
   mutate(short_MCS_ever = 
            case_when(
              ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
@@ -278,7 +318,7 @@ df <- df %>%
 ---------------------------------
 
 
-# 4. Make predictions on unblocked dataset and calculate discrimination measurements
+# 5. Make predictions on unblocked dataset and calculate discrimination measurements
 
 ### 6-Status
 6-Status model is obtained from Section 3 of **model_results.Rmd**
@@ -287,7 +327,7 @@ df <- df %>%
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_6status.RData')
 
-df_model6 <- df %>% select(PX_ID, t_start, t_stop, death, status)
+df_model6 <- df %>% filter(train_test == 'Test') %>% select(PX_ID, t_start, t_stop, death, status)
 df_model6$predict <- predict(model6status, newdata = df_model6, type = 'response')
 
 
@@ -307,10 +347,13 @@ paste0('6-Status Brier: ', DescTools::BrierScore(df_model6$death, df_model6$pred
 French-CRS model is obtained from Section 3 of **model_results.Rmd**
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-load('./model_frenchCRS.RData')
+load('./model_frenchCRS_old.RData')
 
-df_model_french <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French, bilirubin, eGFR, BNP)
-df_model_french$predict <- predict(model1, newdata = df_model_french, type = 'response')
+df_model_french <- df %>% filter(train_test == 'Test') %>% 
+  select(PX_ID, t_start, t_stop, death, short_MCS_French, 
+         bilirubin, eGFR, BNP, BNP_NT_Pro)
+df_model_french$BNP_NT_Pro <- as.factor(df_model_french$BNP_NT_Pro)
+df_model_french$predict <- predict(model_french_old, newdata = df_model_french, type = 'response')
 
 
 concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model_french), timewt = 'n')
@@ -331,8 +374,11 @@ French-CRS model is obtained from Section 3 of **model_results.Rmd**
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_frenchCRS_new.RData')
 
-df_model_french_new <- df %>% select(PX_ID, t_start, t_stop, death, short_MCS_French_new, bilirubin, eGFR, BNP)
-df_model_french_new$predict <- predict(model2, newdata = df_model_french_new, type = 'response')
+df_model_french_new <- df %>% filter(train_test == 'Test') %>% 
+  select(PX_ID, t_start, t_stop, death, short_MCS_French_new, 
+         bilirubin, eGFR, BNP, BNP_NT_Pro)
+df_model_french_new$BNP_NT_Pro <- as.factor(df_model_french_new$BNP_NT_Pro)
+df_model_french_new$predict <- predict(model_french_new, newdata = df_model_french_new, type = 'response')
 
 
 concordance(coxph(Surv(t_start, t_stop, death) ~ predict, data = df_model_french_new), timewt = 'n')
@@ -353,7 +399,8 @@ US-CRS model is obtained from Section 3 of **model_results.Rmd**
 ```{r, warning=F, echo=F, message=F, comment=NA}
 load('./model_USCRS.RData')
 
-df_model_us <- df %>% select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
+df_model_us <- df %>% filter(train_test == 'Test') %>% 
+  select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
                            bilirubin, eGFR, sodium, BNP, BNP_NT_Pro, LVAD, short_MCS_ever)
 df_model_us$BNP_NT_Pro <- as.character(df_model_us$BNP_NT_Pro)
 df_model_us$predict <- predict(model_final, newdata = df_model_us, type = 'response')
@@ -373,15 +420,30 @@ paste0('US-CRS Brier: ', DescTools::BrierScore(df_model_us$death, df_model_us$pr
 ---------------------------------
 
 
-# 5. Make prediction figures on unblocked dataset
+# 6. Cox PH with US-CRS predictors on unblocked
+
+```{r, warning=F, echo=F, message=F, comment=NA}
+concordance(coxph(Surv(t_start, t_stop, death) ~ 
+                    albumin + log(bilirubin + 1) + 
+                    eGFR + sodium + 
+                    (log(BNP + 1):BNP_NT_Pro) + LVAD + short_MCS_ever, 
+                  data = df_model_us), 
+            timewt = 'n')
+```
 
 
-## Boxplot of predicted risk by status 
+---------------------------------
+
+
+# 7. Make prediction figures on unblocked dataset
+
+## Boxplot of predicted risk by status (eFigure 3)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_boxplot <- subset(df_model_us, !is.na(df_model_us$status))
 
 
+# dev.new(width = 7,height = 6, noRStudioGD = T)
 df_boxplot %>%
   ggplot(aes(y = predict, x = status, color = factor(status))) +
   geom_boxplot() +
@@ -396,40 +458,4 @@ df_boxplot %>%
     axis.text.y = element_text(size = 13, margin = margin(r=5)),
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 13))
-```
-
-
----------------------------------
-
-
-# 6. 50-Point Score Based on RMST
-
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-modelus_rmst <- df_model_us
-modelus_rmst <- subset(modelus_rmst, modelus_rmst$t_start <= 365)
-modelus_rmst$t_stop[modelus_rmst$t_stop > 365] <- 365
-
-
-modelus_rmst <- modelus_rmst %>% 
-  group_by(PX_ID) %>%
-  mutate(time_diff = t_stop - t_start) %>%
-  mutate(product = time_diff * (1 - predict)) 
-
-modelus_rmst <- aggregate(modelus_rmst$product, by=list(modelus_rmst$PX_ID), FUN=sum)
-colnames(modelus_rmst) <- c('PX_ID', 'rmst')
-
-
-
-modelus_rmst$score <- 50*(modelus_rmst$rmst /365)
-modelus_rmst %>%
-  ggplot(aes(x = score)) +
-  geom_histogram(fill = '#880d1e') +
-  theme_bw() + 
-  xlab('50-Point Score Based on 1-Year RMST') + ylab('Count') +
-  theme(
-    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_text(size = 14, margin = margin(r=5)),
-    axis.text.y = element_text(size = 13, margin = margin(r=5)))
 ```
