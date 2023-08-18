@@ -9,17 +9,19 @@ output:
 authors: Kevin Zhang, Kevin Lazenby, and William Parker
 ---
  
-<!-- 1. Set up original modified dataset (Line 38) -->
-<!-- 2. Merge with status justification datasets and create variables (Line 156) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 484) -->
-<!-- 4. Set up remaining clinical variables (Line 738) -->
-<!-- 5. Add in BNP type and fix sodium (Line 844) -->
-<!-- 6. Create intervals (Line 864) -->
-<!-- 7. Add memory variables (Line 1120) -->
-<!-- 8. Death in 6 weeks (Line 1262) -->
-<!-- 9. Impute variables (Line 1298) -->
-<!-- 10. Generate new clinical variables (Line 1461) -->
-<!-- 11. Sample checks between blocked and unblocked (Line 1510) -->
+<!-- 1. Set up original modified dataset (Line 40) -->
+<!-- 2. Merge with status justification datasets and create variables (Line 158) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 486) -->
+<!-- 4. Set up remaining clinical variables (Line 740) -->
+<!-- 5. Add in BNP type and fix sodium (Line 846) -->
+<!-- 6. Create intervals (Line 867) -->
+<!-- 7. Add memory variables (Line 1123) -->
+<!-- 8. Death in 6 weeks (Line 1265) -->
+<!-- 9. Count missingness (Line 1301) -->
+<!-- 10. Impute variables (Line 1375) -->
+<!-- 11. Generate new clinical variables (Line 1522) -->
+<!-- 12. Histograms of variables (Line 1571) -->
+<!-- 13. Sample checks between blocked and unblocked (Line 1652) -->
 
 
 
@@ -27,7 +29,7 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
-pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr)
+pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr, cowplot)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -854,7 +856,8 @@ df$BNP_NT_Pro[df$PX_ID %in%
 
 
 ### Assume sodium < 100 is a data entry error
-df$sodium[df$sodium < 100] <- 100
+df$sodium <- as.numeric(df$sodium)
+df$sodium[df$sodium < 100] <- NA
 ```
 
 
@@ -1295,9 +1298,11 @@ df_intervals <- df_intervals %>% select(-c(death_flag, death_time, deathdifferen
 ---------------------------------
 
 
-# 9. Impute variables 
+# 9. Count missingness
+
 
 ### Add in weight, height, and gender for body surface area
+
 ```{r, warning=F, comment=NA, message=F}
 ### Get bsa from cand_thor again since ht, wt, and gender are constant
 df_bsa <- haven::read_sas('./cand_thor.sas7bdat')
@@ -1312,6 +1317,62 @@ df_intervals <- merge(df_intervals, df_bsa, by = 'PX_ID', all.x = T, all.y = F)
 rm(df_bsa)
 ```
 
+
+### Find missings in all intervals
+
+```{r, warning=F, comment=NA, message=F}
+library(plyr)
+
+df_missing <- df_intervals %>%
+  select(PX_ID, BNP, sodium, cardiac_output,
+         central_venous_pressure, PASP, PADP, 
+         systolicBP, diastolicBP, PCWP, age, creatinine, CAN_GENDER)
+
+
+df_missing$creatinine <- as.numeric(df_missing$creatinine)
+df_missing$age <- as.numeric(df_missing$age)
+
+df_missing <- df_missing %>%
+  mutate(eGFR = case_when(
+    
+    CAN_GENDER == 'F' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age) * 1.012,
+    
+    CAN_GENDER == 'M' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+      (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age))) %>%
+  
+  select(-c(age, creatinine))
+
+
+100*sum(aggregate(df_missing$BNP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905  
+100*sum(aggregate(df_missing$sodium, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905 
+100*sum(aggregate(df_missing$eGFR, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905 
+100*sum(aggregate(df_missing$cardiac_output, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905  
+
+100*sum(aggregate(df_missing$central_venous_pressure, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905  
+100*sum(aggregate(df_missing$PASP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905 
+100*sum(aggregate(df_missing$PADP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905  
+
+100*sum(aggregate(df_missing$systolicBP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905 
+100*sum(aggregate(df_missing$diastolicBP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905  
+100*sum(aggregate(df_missing$PCWP, list(df_missing$PX_ID), 
+              function(x){all(is.na(x))})$x) / 16905 
+```
+
+
+---------------------------------
+
+
+# 10. Impute variables 
 
 ### Replace certain variables with normal values
 
@@ -1341,7 +1402,7 @@ df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_NT_Pro == '1'] <-
   median(df_intervals$BNP[df_intervals$BNP_NT_Pro == '1'], na.rm=T)
 
 
-df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$BNP, na.rm=T)
+df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$sodium, na.rm=T)
 ```
 
 ```{r, warning=F, comment=NA, message=F}
@@ -1458,7 +1519,7 @@ df_candthor %>%
 ---------------------------------
 
 
-# 10. Generate new clinical variables
+# 11. Generate new clinical variables
 
 ### Temporary surgery MCS, ever
 ```{r, warning=F, comment=NA, message=F}
@@ -1507,7 +1568,88 @@ save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 ---------------------------------
 
 
-# 11. Sample checks between blocked and unblocked
+# 12. Histograms of variables (eFigure 2)
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+df_histograms <- df_intervals %>% select(albumin, eGFR, 
+                                         sodium, bilirubin,
+                                         BNP, central_venous_pressure,
+                                         cardiac_output, PADP, PASP,
+                                         systolicBP, diastolicBP)
+df_histograms <- df_histograms %>%   
+  mutate(
+    cardiac_output = as.numeric(cardiac_output),
+    systolicBP = as.numeric(systolicBP),
+    diastolicBP = as.numeric(diastolicBP),
+    PASP = as.numeric(PASP),
+    PADP = as.numeric(PADP),
+    central_venous_pressure = as.numeric(central_venous_pressure),
+    
+    cpo = (1/541) * cardiac_output * (((2/3)*systolicBP) + ((1/3)*diastolicBP)),
+    papi = (PASP - PADP) / central_venous_pressure)
+df_histograms$papi[df_histograms$central_venous_pressure == 0] <- 1
+df_histograms$papi[df_histograms$papi < 1 & !is.na(df_histograms$papi)] <- 1
+
+df_histograms <- df_histograms %>% 
+  select(-c(central_venous_pressure, cardiac_output, PADP, PASP,
+            systolicBP, diastolicBP))
+
+
+
+
+hist1 <- ggplot(df_histograms, aes(x=as.numeric(albumin))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('Albumin') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist2 <- ggplot(df_histograms, aes(x=as.numeric(eGFR))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab(expression('eGFR'^'a')) + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist3 <- ggplot(df_histograms, aes(x=as.numeric(sodium))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('Sodium') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist4 <- ggplot(df_histograms, aes(x=as.numeric(cpo))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('CPO') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist5 <- ggplot(df_histograms, aes(x=as.numeric(bilirubin))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('Bilirubin') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist6 <- ggplot(df_histograms, aes(x=as.numeric(BNP))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('BNP') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hist7 <- ggplot(df_histograms, aes(x=as.numeric(papi))) + 
+  geom_histogram(fill='#880d1e', color='#880d1e') + 
+  theme_bw() +
+  xlab('PAPi') + ylab('') +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+# dev.new(width = 7,height = 6, noRStudioGD = T)
+cowplot::plot_grid(hist1, hist2, hist3, hist4, hist5, hist6, hist7,
+                   labels = 'AUTO', scale = 0.9, nrow=2)
+```
+
+
+---------------------------------
+
+
+# 13. Sample checks between blocked and unblocked
 
 ### A random sample of 10 patients
 ```{r}
@@ -1553,6 +1695,22 @@ df %>%
 ```{r}
 df_intervals %>%
   filter(PX_ID == '1252031')  %>%
+  select(PX_ID, interval_start, interval_stop, status, 
+         systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+
+### A patient with time in a multiple of 14
+
+```{r}
+df %>%
+  filter(PX_ID == '1496791')  %>%
+  select(PX_ID, t_start, t_stop, status, systolicBP, PCWP, central_venous_pressure, cardiac_output)
+```
+
+```{r}
+df_intervals %>%
+  filter(PX_ID == '1496791')  %>%
   select(PX_ID, interval_start, interval_stop, status, 
          systolicBP, PCWP, central_venous_pressure, cardiac_output)
 ```
