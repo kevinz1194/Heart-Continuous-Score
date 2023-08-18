@@ -56,7 +56,7 @@ Updated 7/13/2023: Colors changed, confidence intervals added.
 
 Updated 8/11/2023: Models add NT-proBNP, new French-CRS score.
 
-Updated 8/17/2023: Sensitivity analysis using MCS without balloon pump added. 
+Updated 8/18/2023: Sensitivity analysis using MCS without balloon pump added. Model changed to drop hemodynamics.
 
 
 ### 5. results_unblocked.Rmd
