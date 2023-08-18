@@ -10,13 +10,13 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 35) -->
 <!-- 2. Set up matrices for predictions (Line 143) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 599) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1293) -->
-<!-- 5. Obtain machine learning model results (Line 1334) -->
-<!-- 6. Make predictions on test dataset (Line 1396) -->
-<!-- 7. Create AUC curves (Line 1450) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1506) -->
-<!-- 9. Create calibration plot in test dataset (Line 1567) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 1615) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1530) -->
+<!-- 5. Obtain machine learning model results (Line 1606) -->
+<!-- 6. Make predictions on test dataset (Line 1668) -->
+<!-- 7. Create AUC curves (Line 1722) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1778) -->
+<!-- 9. Create calibration plot in test dataset (Line 1839) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 1887) -->
 
 
 
@@ -617,13 +617,13 @@ save(model6status, file = './model_6status.RData')
 * Short term MCS (ECMO or Balloon Pump)
 * Natural log of (bilirubin + 1)
 * eGFR
-* Natural log of (BNP + 1)
+* Natural log of (BNP + 1) and NT-proBNP interaction
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_french_old <- glm(formula = as.formula(
   death6week ~ 
-    short_MCS_French + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
+    short_MCS_French + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -637,7 +637,8 @@ model_french_old_results <- model_french_old_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model_french_old_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
+model_french_old_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 
+                                        'Log BNP+1, Regular BNP', 'Log BNP+1, NT-proBNP')
 
 model_french_old_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -654,7 +655,7 @@ save(model_french_old, file = './model_frenchCRS_old.RData')
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_french_new <- glm(formula = as.formula(
   death6week ~ 
-    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1)), 
+    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -668,7 +669,8 @@ model_french_new_results <- model_french_new_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model_french_new_results$Variable <- c('Intercept', 'Short Term MCS (New)', 'Log Bilirubin+1', 'eGFR', 'Log BNP+1')
+model_french_new_results$Variable <- c('Intercept', 'Short Term MCS', 'Log Bilirubin+1', 'eGFR', 
+                                        'Log BNP+1, Regular BNP', 'Log BNP+1, NT-proBNP')
 
 model_french_new_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -686,11 +688,10 @@ save(model_french_new, file = './model_frenchCRS_new.RData')
 * Natural log of (bilirubin + 1)
 * eGFR
 * Sodium
-* Natural log of (BNP + 1)
+* Natural log of (BNP + 1) and NT-proBNP interaction
 * NT-proBNP
 * LVAD
 * Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
-* BNP and NT-proBNP interaction
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -734,8 +735,12 @@ model_PCWP_results %>%
 #### Check that CPO and API are not heavily correlated
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'pairwise.complete.obs', method = 'pearson'))
-paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, use = 'pairwise.complete.obs', method = 'spearman'))
+paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$api, 
+                                   use = 'pairwise.complete.obs', 
+                                   method = 'pearson'))
+paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api, 
+                                    use = 'pairwise.complete.obs', 
+                                    method = 'spearman'))
 ```
 
 
@@ -852,9 +857,11 @@ model_API_results %>%
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 paste0('Pearson correlation ', cor(df_intervals$cpo, df_intervals$papi, 
-                                   use = 'pairwise.complete.obs', method = 'pearson'))
+                                   use = 'pairwise.complete.obs', 
+                                   method = 'pearson'))
 paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi, 
-                                    use = 'pairwise.complete.obs', method = 'spearman'))
+                                    use = 'pairwise.complete.obs', 
+                                    method = 'spearman'))
 ```
 
 
@@ -899,9 +906,11 @@ model_PAPI_CPO_results %>%
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 paste0('Pearson correlation ', cor(df_intervals$api, df_intervals$papi,
-                                   use = 'pairwise.complete.obs', method = 'pearson'))
+                                   use = 'pairwise.complete.obs', 
+                                   method = 'pearson'))
 paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi, 
-                                    use = 'pairwise.complete.obs', method = 'spearman'))
+                                    use = 'pairwise.complete.obs', 
+                                    method = 'spearman'))
 ```
 
 
@@ -963,11 +972,11 @@ model_CPO_PAPI_AST_API_results <- model_CPO_PAPI_AST_API_results %>%
            PValue = round(PValue, 3))
 
 model_CPO_PAPI_AST_API_results$Variable <- c('Intercept', 'CPO', 'PAPi', 
-                                         'API', 'AST', 'Albumin', 
-                                         'Log Bilirubin+1', 'eGFR', 'Sodium', 
-                                         'LVAD', 'Short MCS Ever', 
-                                         'Log BNP+1, Regular BNP',
-                                         'Log BNP+1, NT-proBNP')
+                                             'API', 'AST', 'Albumin', 
+                                             'Log Bilirubin+1', 'eGFR', 'Sodium', 
+                                             'LVAD', 'Short MCS Ever', 
+                                             'Log BNP+1, Regular BNP',
+                                             'Log BNP+1, NT-proBNP')
 
 model_CPO_PAPI_AST_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
@@ -1049,6 +1058,41 @@ model_CPO_PAPI_AST_results %>%
 ```
 
 
+### Selected Model #12: No hemodynamics
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model_no_hemo <- glm(formula = as.formula(
+  death6week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_no_hemo_results <- as.data.frame(summary(model_no_hemo)$coefficients)
+model_no_hemo_results$name <- rownames(model_no_hemo_results)
+
+model_no_hemo_results <- model_no_hemo_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_no_hemo_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_no_hemo_results) <- seq(1:nrow(model_no_hemo_results))
+model_no_hemo_results <- model_no_hemo_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_no_hemo_results$Variable <- c('Intercept', 'Albumin', 'Log Bilirubin+1', 
+                                    'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                    'Log BNP+1, Regular BNP',
+                                    'Log BNP+1, NT-proBNP')
+
+model_no_hemo_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+
 ### Compare model fits
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -1063,7 +1107,8 @@ model_comparison <- data.frame(
               'US-CRS with PAPi Only',
               'US-CRS with PAPi, API, AST',
               'US-CRS with PAPi and API',
-              'US-CRS with PAPi and AST'),
+              'US-CRS with PAPi and AST',
+              'US-CRS without Hemodynamics'),
   
   'AIC' = c(AIC(model_french_old), 
             AIC(model_french_new), 
@@ -1075,7 +1120,8 @@ model_comparison <- data.frame(
             AIC(model_PAPI), 
             AIC(model_CPO_PAPI_AST_API), 
             AIC(model_CPO_PAPI_API),
-            AIC(model_CPO_PAPI_AST)),
+            AIC(model_CPO_PAPI_AST),
+            AIC(model_no_hemo)),
   
   
     'BIC' = c(BIC(model_french_old), 
@@ -1088,7 +1134,8 @@ model_comparison <- data.frame(
             BIC(model_PAPI), 
             BIC(model_CPO_PAPI_AST_API), 
             BIC(model_CPO_PAPI_API),
-            BIC(model_CPO_PAPI_AST)))
+            BIC(model_CPO_PAPI_AST),
+            BIC(model_no_hemo)))
 
 model_comparison$AIC <- round(model_comparison$AIC, 3)
 model_comparison$BIC <- round(model_comparison$BIC, 3)
@@ -1101,12 +1148,12 @@ model_comparison %>%
 ```
 
 
-### Final US-CRS model: CPO, PAPi
+### Final US-CRS model: no hemodynamics
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_final <- glm(formula = as.formula(
   death6week ~ 
-    cpo + papi + albumin + log(bilirubin + 1) + 
+    albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
     LVAD + short_MCS_ever), 
@@ -1123,8 +1170,8 @@ model_final_results <- model_final_results %>%
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model_final_results$Variable <- c('Intercept', 'CPO', 
-                                  'PAPi', 'Albumin', 'Log Bilirubin+1',
+model_final_results$Variable <- c('Intercept',  
+                                  'Albumin', 'Log Bilirubin+1',
                                   'eGFR', 'Sodium', 
                                   'LVAD', 'Short MCS Ever',
                                   'Log BNP+1, Regular BNP',
@@ -1140,10 +1187,49 @@ save(model_final, file = './model_USCRS.RData')
 ```
 
 
+### Final US-CRS model: with hemodynamics
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model_final_hemo <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final_hemo_results <- as.data.frame(summary(model_final_hemo)$coefficients)
+model_final_hemo_results$name <- rownames(model_final_hemo_results)
+
+model_final_hemo_results <- model_final_hemo_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_final_hemo_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_final_hemo_results) <- seq(1:nrow(model_final_hemo_results))
+model_final_hemo_results <- model_final_hemo_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_final_hemo_results$Variable <- c('Intercept', 'CPO', 'PAPi',
+                                  'Albumin', 'Log Bilirubin+1',
+                                  'eGFR', 'Sodium', 
+                                  'LVAD', 'Short MCS Ever',
+                                  'Log BNP+1, Regular BNP',
+                                  'Log BNP+1, NT-proBNP')
+
+model_final_hemo_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+
+
+save(model_final_hemo, file = './model_USCRS_hemo.RData')
+```
+
+
 ----------------------------
 
 
-### Coefficient plot of results (Figure 1)
+### Coefficient plot of results without hemodynamics (Figure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_coefplot <- as.data.frame(summary(model_final)$coefficients)[ ,c('Estimate', 'Std. Error')]
@@ -1161,9 +1247,12 @@ df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <-
 df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- 
   summary(model_french_new)$coefficients['eGFR', 'Estimate']
 
-### Assumes the French coefficient for BNP is for non nT-proBNP
+
 df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
-  summary(model_french_new)$coefficients['log(BNP + 1)', 'Estimate']
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Estimate']
+
 
 
 df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
@@ -1172,8 +1261,156 @@ df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <-
   summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- 
   summary(model_french_new)$coefficients['eGFR', 'Std. Error']
+
 df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
-  summary(model_french_new)$coefficients['log(BNP + 1)', 'Std. Error']
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Std. Error']
+
+
+df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
+df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
+
+df_coefplot$var <- c('Albumin', 'Log Bilirubin', 
+'eGFR', 'Sodium', 'Durable LVAD', 'Short-Term MCS', 
+'Log BNP, Regular BNP', 'Log BNP, NT-proBNP')
+
+
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP, Regular BNP', 
+                                'Log BNP, NT-proBNP',
+                                'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
+
+
+### Scale certain estimates
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- df_coefplot$french_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_est[df_coefplot$var == 'Sodium'] <- df_coefplot$french_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] * 10
+
+
+df_coefplot$us_est[df_coefplot$var == 'eGFR'] <- df_coefplot$us_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_est[df_coefplot$var == 'Sodium'] <- df_coefplot$us_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] * 10
+
+
+
+df_coefplot <- df_coefplot %>%
+  mutate(
+    french_lower = french_est - (1.96*french_stderr),
+    french_upper = french_est + (1.96*french_stderr),
+    us_lower = us_est - (1.96*us_stderr),
+    us_upper = us_est + (1.96*us_stderr)) %>%
+  select(-c(french_stderr, us_stderr))
+
+
+df_coefplot <- df_coefplot %>%
+  pivot_longer(!var, names_to = 'stat', values_to = 'count')
+df_coefplot$model <- ifelse(grepl('^french', df_coefplot$stat), 'French', 'US')
+df_coefplot$stat <- sub('.*_', '', df_coefplot$stat)
+
+df_coefplot$est <- ifelse(df_coefplot$stat == 'est', df_coefplot$count, NA)
+df_coefplot$lower <- ifelse(df_coefplot$stat == 'lower', df_coefplot$count, NA)
+df_coefplot$upper <- ifelse(df_coefplot$stat == 'upper', df_coefplot$count, NA)
+
+df_coefplot$stat <- NULL; df_coefplot$count <- NULL
+df_coefplot <- df_coefplot %>%
+  group_by(var, model) %>%
+  summarize_all(~ max(., na.rm=T), .groups = 'drop')
+
+df_coefplot$est[df_coefplot$est == -Inf] <- NA
+df_coefplot$lower[df_coefplot$lower == -Inf] <- NA
+df_coefplot$upper[df_coefplot$upper == -Inf] <- NA
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP, Regular BNP',
+                                'Log BNP, NT-proBNP', 
+                                'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
+
+# dev.new(width = 7,height = 6, noRStudioGD = T)
+df_coefplot %>%
+  ggplot(aes(x=est, 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium', 
+                                      'Albumin', 
+                                      'Log BNP, NT-proBNP',
+                                      'Log BNP, Regular BNP',
+                                      'eGFR', 'Log Bilirubin', 
+                                      'Short-Term MCS')), 
+             color=model)) +
+  geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
+  geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
+  xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
+  scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
+                            'Log BNP, NT-proBNP', 
+                            'Log BNP, Regular BNP', 
+                            expression('eGFR'^'b'), 'Log Bilirubin', 
+                            expression('Short-Term MCS'^'a'))) +
+  scale_colour_manual(name='Model',
+                      breaks = c('US', 'French'),
+                      values = c('#880d1e', '#3f88c5'), 
+                      labels = c('US-CRS', 'Current French-CRS')) + 
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
+        axis.text.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face='bold', size = 16, margin = margin(r=5)),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 18))  
+```
+
+
+### Coefficient plot of results with CPO and PAPi 
+
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_coefplot <- as.data.frame(summary(model_final_hemo)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot$var <- rownames(df_coefplot)
+rownames(df_coefplot) <- NULL
+colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
+
+df_coefplot$french_est <- NA
+df_coefplot$french_stderr <- NA
+
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- 
+  summary(model_french_new)$coefficients['short_MCS_French_new', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- 
+  summary(model_french_new)$coefficients['eGFR', 'Estimate']
+
+
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Estimate']
+
+
+
+df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
+  summary(model_french_new)$coefficients['short_MCS_French_new', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- 
+  summary(model_french_new)$coefficients['eGFR', 'Std. Error']
+
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Std. Error']
 
 
 df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
@@ -1191,7 +1428,7 @@ df_coefplot <- df_coefplot %>%
                    which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
                                 'Log BNP, Regular BNP', 
                                 'Log BNP, NT-proBNP',
-                                'CPO', 'PAPi', 'Albumin', 
+                                'Albumin', 'CPO', 'PAPi',
                                 'Sodium', 'Durable LVAD'))))
 
 
@@ -1248,15 +1485,14 @@ df_coefplot <- df_coefplot %>%
                    which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
                                 'Log BNP, Regular BNP',
                                 'Log BNP, NT-proBNP', 
-                                'CPO', 'PAPi', 'Albumin', 
+                                'Albumin', 'PAPi', 'CPO',
                                 'Sodium', 'Durable LVAD'))))
 
-
-
+# dev.new(width = 7,height = 6, noRStudioGD = T)
 df_coefplot %>%
   ggplot(aes(x=est, 
              y=factor(var, levels = c('Durable LVAD', 'Sodium', 
-                                      'Albumin', 'PAPi', 'CPO', 
+                                      'Albumin', 'PAPi', 'CPO',
                                       'Log BNP, NT-proBNP',
                                       'Log BNP, Regular BNP',
                                       'eGFR', 'Log Bilirubin', 
@@ -1267,7 +1503,7 @@ df_coefplot %>%
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
   xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
-                            expression('PAPi'^'c'), 'CPO', 
+                            expression('PAPi'^'c'), 'CPO',
                             'Log BNP, NT-proBNP', 
                             'Log BNP, Regular BNP', 
                             expression('eGFR'^'b'), 'Log Bilirubin', 
@@ -1290,12 +1526,48 @@ df_coefplot %>%
 
 -------------
 
+
 # 4. Run sensitivity logistic regression models
 
-### US-CRS with balloon pumps in short-term MCS
+### US-CRS with balloon pumps in short-term MCS (no hemodynamics)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-model_final <- glm(formula = as.formula(
+model_final_BP <- glm(formula = as.formula(
+  death6week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever_with_BP), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final_BP_results <- as.data.frame(summary(model_final_BP)$coefficients)
+model_final_BP_results$name <- rownames(model_final_BP_results)
+
+model_final_BP_results <- model_final_BP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_final_BP_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_final_BP_results) <- seq(1:nrow(model_final_BP_results))
+model_final_BP_results <- model_final_BP_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_final_BP_results$Variable <- c('Intercept', 'Albumin', 'Log Bilirubin+1',
+                                     'eGFR', 'Sodium', 'LVAD', 
+                                     'Short MCS Ever (with IABP)',
+                                     'Log BNP+1, Regular BNP',
+                                     'Log BNP+1, NT-proBNP')
+
+model_final_BP_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+```
+
+
+### US-CRS with balloon pumps in short-term MCS (with hemodynamics)
+
+```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+model_hemo_BP <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
@@ -1304,24 +1576,24 @@ model_final <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_final_results <- as.data.frame(summary(model_final)$coefficients)
-model_final_results$name <- rownames(model_final_results)
+model_hemo_BP_results <- as.data.frame(summary(model_hemo_BP)$coefficients)
+model_hemo_BP_results$name <- rownames(model_hemo_BP_results)
 
-model_final_results <- model_final_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model_final_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model_final_results) <- seq(1:nrow(model_final_results))
-model_final_results <- model_final_results %>% 
+model_hemo_BP_results <- model_hemo_BP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_hemo_BP_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_hemo_BP_results) <- seq(1:nrow(model_hemo_BP_results))
+model_hemo_BP_results <- model_hemo_BP_results %>% 
   mutate(Estimate = round(Estimate, 3),
            PValue = round(PValue, 3))
 
-model_final_results$Variable <- c('Intercept', 'CPO', 
-                                  'PAPi', 'Albumin', 'Log Bilirubin+1',
-                                  'eGFR', 'Sodium', 
-                                  'LVAD', 'Short MCS Ever',
-                                  'Log BNP+1, Regular BNP',
-                                  'Log BNP+1, NT-proBNP')
+model_hemo_BP_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 
+                                    'Log Bilirubin+1', 'eGFR', 
+                                    'Sodium', 'LVAD', 
+                                    'Short MCS Ever (with IABP)',
+                                    'Log BNP+1, Regular BNP',
+                                    'Log BNP+1, NT-proBNP')
 
-model_final_results %>%
+model_hemo_BP_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
