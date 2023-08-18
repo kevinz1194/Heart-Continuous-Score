@@ -8,15 +8,15 @@ authors: Kevin Zhang
 ---
 
 <!-- 1. Set up dataset with generated cardiac variables (Line 35) -->
-<!-- 2. Set up matrices for predictions (Line 143) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 599) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1530) -->
-<!-- 5. Obtain machine learning model results (Line 1606) -->
-<!-- 6. Make predictions on test dataset (Line 1668) -->
-<!-- 7. Create AUC curves (Line 1722) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1778) -->
-<!-- 9. Create calibration plot in test dataset (Line 1839) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 1887) -->
+<!-- 2. Set up matrices for predictions (Line 149) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 605) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1536) -->
+<!-- 5. Obtain machine learning model results (Line 1612) -->
+<!-- 6. Make predictions on test dataset (Line 1674) -->
+<!-- 7. Create AUC curves (Line 1728) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1784) -->
+<!-- 9. Create calibration plot in test dataset (Line 1845) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 1902) -->
 
 
 
@@ -104,6 +104,13 @@ df_intervals$papi[df_intervals$papi < 1 & !is.na(df_intervals$papi)] <- 1
 
 
 ### MCS variables
+df_intervals <- df_intervals %>% 
+  group_by(PX_ID) %>%
+  mutate(perc_LVAD_ever = case_when(perc_LVAD == '1' ~ '1', TRUE ~ NA_character_)) %>%
+  fill(perc_LVAD_ever, .direction = 'down') %>%
+  mutate(perc_LVAD_ever = case_when(is.na(perc_LVAD_ever) ~ '0', TRUE ~ perc_LVAD_ever))
+
+
 df_intervals <- df_intervals %>%
   mutate(short_MCS_French = 
            case_when((ECMO == '1' & status == '1') | IABP == '1' ~ 1,
@@ -114,9 +121,8 @@ df_intervals <- df_intervals %>%
   mutate(short_MCS_ever = 
            case_when(ECMO_ever == '1' | temp_surg_ever == '1' | BiVAD_no_discharge_ever == '1' ~ 1,
              TRUE ~ 0),
-         
-         short_MCS_ever_with_BP = case_when(
-           IABP_ever == '1' ~ 1,
+         short_MCS_ever_with_BP_perc = case_when(
+           IABP_ever == '1' | perc_LVAD_ever == '1' ~ 1,
            TRUE ~ short_MCS_ever))
 
 
@@ -1529,7 +1535,7 @@ df_coefplot %>%
 
 # 4. Run sensitivity logistic regression models
 
-### US-CRS with balloon pumps in short-term MCS (no hemodynamics)
+### US-CRS with balloon pumps and perc LVAD in short-term MCS (no hemodynamics)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_final_BP <- glm(formula = as.formula(
@@ -1537,7 +1543,7 @@ model_final_BP <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever_with_BP), 
+    LVAD + short_MCS_ever_with_BP_perc), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1553,7 +1559,7 @@ model_final_BP_results <- model_final_BP_results %>%
 
 model_final_BP_results$Variable <- c('Intercept', 'Albumin', 'Log Bilirubin+1',
                                      'eGFR', 'Sodium', 'LVAD', 
-                                     'Short MCS Ever (with IABP)',
+                                     'Short MCS Ever (with IABP, perc)',
                                      'Log BNP+1, Regular BNP',
                                      'Log BNP+1, NT-proBNP')
 
@@ -1564,7 +1570,7 @@ model_final_BP_results %>%
 ```
 
 
-### US-CRS with balloon pumps in short-term MCS (with hemodynamics)
+### US-CRS with balloon pumps and perc LVAD in short-term MCS (with hemodynamics)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_hemo_BP <- glm(formula = as.formula(
@@ -1572,7 +1578,7 @@ model_hemo_BP <- glm(formula = as.formula(
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever_with_BP), 
+    LVAD + short_MCS_ever_with_BP_perc), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1589,7 +1595,7 @@ model_hemo_BP_results <- model_hemo_BP_results %>%
 model_hemo_BP_results$Variable <- c('Intercept', 'CPO', 'PAPi', 'Albumin', 
                                     'Log Bilirubin+1', 'eGFR', 
                                     'Sodium', 'LVAD', 
-                                    'Short MCS Ever (with IABP)',
+                                    'Short MCS Ever (with IABP, perc)',
                                     'Log BNP+1, Regular BNP',
                                     'Log BNP+1, NT-proBNP')
 
@@ -1842,6 +1848,7 @@ cowplot::plot_grid(p1, p2, labels = 'AUTO', scale = 0.9)
 ## Convert first to 50-point medical urgency score
 df_intervals$uscrs_predict <- predict(model_final, newdata = df_intervals, type = 'response')
 df_intervals <- df_intervals %>%
+  ungroup() %>%
   mutate(uscrs_score = cut_number(uscrs_predict, 50, labels= FALSE))
 
 
@@ -1851,7 +1858,8 @@ df_intervals_test <- df_intervals_test %>% select(death6week, uscrs_predict, usc
 df_intervals_test <- subset(df_intervals_test, !is.na(uscrs_score))
 
 
-df_intervals_test %>%
+df_intervals_test_calib <- 
+  df_intervals_test %>%
   mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
@@ -1861,7 +1869,10 @@ df_intervals_test %>%
   mutate(sd = sqrt(observed*(1-observed)),
          se = sd/sqrt(total),
          upper_ci = observed + 1.96*se,
-         lower_ci = observed - 1.96*se) %>%
+         lower_ci = observed - 1.96*se)
+
+
+df_intervals_test_calib %>%
   ggplot(aes(x = predicted, y = observed)) +
   geom_point(aes(color = mean_uscrs)) +  
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci, color = mean_uscrs)) + 
@@ -1878,6 +1889,10 @@ df_intervals_test %>%
         axis.text.y = element_text(size = 13, margin = margin(r=5)),
         legend.title = element_text(size = 12, face='bold'),
         legend.text = element_text(size = 12)) 
+
+
+### Find calibration slope and intercept
+lm(observed ~ predicted, data = df_intervals_test_calib)
 ```
 
 
