@@ -70,4 +70,4 @@ Updated 7/13/2023: Colors changed.
 
 Updated 8/11/2023: Accounts for NT-proBNP, new French-CRS score.
 
-Updayed 8/17/2023: Name changed, updated to work with new data.
+Updayed 8/18/2023: Name changed, updated to work with new data. Cox PH mode added.
