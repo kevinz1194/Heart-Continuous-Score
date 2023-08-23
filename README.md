@@ -58,6 +58,8 @@ Updated 8/11/2023: Models add NT-proBNP, new French-CRS score.
 
 Updated 8/18/2023: Sensitivity analysis using MCS without balloon pump added. Model changed to drop hemodynamics.
 
+Updated 8/22/2023: Make additional predictions on model with hemodynamics.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
