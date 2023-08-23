@@ -13,10 +13,10 @@ authors: Kevin Zhang
 <!-- 4. Run sensitivity logistic regression models (Line 1536) -->
 <!-- 5. Obtain machine learning model results (Line 1612) -->
 <!-- 6. Make predictions on test dataset (Line 1674) -->
-<!-- 7. Create AUC curves (Line 1728) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1784) -->
-<!-- 9. Create calibration plot in test dataset (Line 1845) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 1902) -->
+<!-- 7. Create AUC curves (Line 1735) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1791) -->
+<!-- 9. Create calibration plot in test dataset (Line 1852) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 1909) -->
 
 
 
@@ -1689,6 +1689,11 @@ model_final_predict <- as.numeric(
 model_final_indices <- which(!is.na(model_final_predict))
 model_final_predict <- na.omit(model_final_predict)
 
+model_final_hemo_predict <- as.numeric(
+  predict(model_final_hemo, newdata = df_intervals_test, type = 'response'))
+model_final_hemo_indices <- which(!is.na(model_final_hemo_predict))
+model_final_hemo_predict <- na.omit(model_final_hemo_predict)
+
 
 
 elastic_nomem_predict <- predict(model_elastic_nomem, 
@@ -1719,6 +1724,8 @@ df_intervals_test_model_french_new <-
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_new_indices), ]
 df_intervals_test_model_final <- 
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
+df_intervals_test_model_final_hemo <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_hemo_indices), ]
 ```
 
 
@@ -1787,7 +1794,7 @@ legend('bottomright', xpd = T,
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
-importance1 <- importance1[importance1$Gain > 0.04, ]
+importance1 <- importance1[importance1$Gain > 0.03, ]
 
 
 p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
@@ -1812,7 +1819,7 @@ p1 <- p1 +
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
-importance2 <- importance2[importance2$Gain > 0.04, ]
+importance2 <- importance2[importance2$Gain > 0.03, ]
 
 
 p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
@@ -1908,7 +1915,7 @@ df_intervals %>%
   filter(!is.na(status)) %>%
   group_by(PX_ID) %>%
   filter(row_number()==1) %>%
-  ggplot(aes(x= uscrs_score, fill = status)) +
+  ggplot(aes(x = uscrs_score, fill = status)) +
   scale_fill_manual(name = 'Status', values = c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
   geom_histogram(binwidth = 2) +  
   xlab('US-CRS Initial Score') + ylab('Number of Candidates') +
