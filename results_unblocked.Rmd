@@ -10,11 +10,11 @@ authors: Kevin Zhang
 
 <!-- 1. Set up continuous dataset (Line 33) -->
 <!-- 2. Comparison of training and testing datasets (Line 80) -->
-<!-- 3. Find missing % at listing (Line 192) -->
-<!-- 4. Impute values into unblocked dataset (Line 221) -->
-<!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 330) -->
-<!-- 6. Cox PH with US-CRS predictors on unblocked (Line 457) -->
-<!-- 7. Make prediction figures on unblocked dataset (Line 472) -->
+<!-- 3. Find missing % at listing (Line 203) -->
+<!-- 4. Impute values into unblocked dataset (Line 232) -->
+<!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 341) -->
+<!-- 6. Cox PH with US-CRS predictors on unblocked (Line 468) -->
+<!-- 7. Make prediction figures on unblocked dataset (Line 483) -->
 
 
 
@@ -45,7 +45,7 @@ df <- df %>%
          AST, creatinine, bilirubin, albumin, sodium, BNP, BNP_NT_Pro,
          heart_rate, diastolicBP, PASP, PADP, hemoglobin, dialysis, peripheral_vascular, 
          status, ECMO, BiVAD_no_discharge, temp_surg_LVAD, IABP, ECMO, 
-         death_flag, age, status_initial, LVAD, BiVAD, transplant)
+         death_flag, age, status_initial, LVAD, BiVAD, transplant, LVAD, perc_LVAD)
 
 
 ## Add a train-test indicator
@@ -96,6 +96,9 @@ Includes these initial variables at listing:
 - CPO
 - API
 - MCS Components (ECMO, temporary surgical LVAD, BiVAD without discharge)
+- IABP
+- Durable LVAD
+- Percutaneous VAD
 
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -105,7 +108,8 @@ df_table1 <- df %>%
          PASP, PADP, central_venous_pressure,
          systolicBP, diastolicBP, cardiac_output, 
          CAN_GENDER, CAN_RACE, dialysis,
-         ECMO, temp_surg_LVAD, BiVAD_no_discharge) %>%
+         ECMO, temp_surg_LVAD, BiVAD_no_discharge,
+         IABP, LVAD, perc_LVAD) %>%
   group_by(PX_ID) %>%
   filter(row_number() == 1) %>%
   mutate(age = as.numeric(age))
@@ -146,11 +150,15 @@ df_table1 <- df_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race',
                            'sodium', 'BNP', 'BNP_NT_Pro', 'cardiac_output', 
                            'PASP', 'PADP', 'systolicBP', 'diastolicBP',
                            'central_venous_pressure', 'cpo', 'papi',
-                           'ECMO', 'temp_surg_LVAD', 'BiVAD_no_discharge')]
+                           'ECMO', 'temp_surg_LVAD', 'BiVAD_no_discharge',
+                           'IABP', 'LVAD', 'perc_LVAD')]
 df_table1$BNP_NT_Pro <- as.factor(df_table1$BNP_NT_Pro)
 df_table1$ECMO <- as.factor(df_table1$ECMO)
 df_table1$temp_surg_LVAD <- as.factor(df_table1$temp_surg_LVAD)
 df_table1$BiVAD_no_discharge <- as.factor(df_table1$BiVAD_no_discharge)
+df_table1$IABP <- as.factor(df_table1$IABP)
+df_table1$LVAD <- as.factor(df_table1$LVAD)
+df_table1$perc_LVAD <- as.factor(df_table1$perc_LVAD)
 
 
 df_table1 %>%
@@ -176,9 +184,12 @@ df_table1 %>%
                         central_venous_pressure ~ 'Central Venous Pressure, mean (SD), mm Hg',
                         cpo ~ 'Cardiac Power Output, mean (SD), watts',
                         papi ~ 'Pulmonary Artery Pulsatility Index, mean (SD)',
-                        ECMO ~ 'ECMO',
-                        temp_surg_LVAD ~ 'Temporary Surgical LVAD',
-                        BiVAD_no_discharge ~ 'BiVAD, No Discharge')) %>%
+                        ECMO ~ 'ECMO, No. (%)',
+                        temp_surg_LVAD ~ 'Temporary Surgical LVAD, No. (%)',
+                        BiVAD_no_discharge ~ 'BiVAD, No Discharge, No. (%)',
+                        IABP ~ 'IABP, No. (%)',
+                        LVAD ~ 'Durable LVAD, No. (%)',
+                        perc_LVAD ~ 'Percutaneous LVAD, No. (%)')) %>%
   modify_header(label = "**Variable**") %>%
   add_p() %>%
   add_overall() %>%
