@@ -68,10 +68,13 @@ Updated 7/9/2023: Added.
 
 Updated 7/11/2023: Unblocking method changed to every justification form change.
 
-Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations for US-CRS model with hemodynamics.
-
 Updated 7/13/2023: Colors changed.
 
 Updated 8/11/2023: Accounts for NT-proBNP, new French-CRS score.
+
+Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations for US-CRS model with hemodynamics.
+
+Updated 8/25/2023: IABP, durable and perc LVAD variables added.
+
 
 Updayed 8/18/2023: Name changed, updated to work with new data. Cox PH mode added.
