@@ -10,14 +10,14 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 36) -->
 <!-- 2. Set up matrices for predictions (Line 150) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 606) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1550) -->
-<!-- 5. Obtain machine learning model results (Line 1626) -->
-<!-- 6. Make predictions on test dataset (Line 1688) -->
-<!-- 7. Create AUC curves (Line 1749) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1805) -->
-<!-- 9. Create calibration plot in test dataset (Line 1866) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 1923) -->
-<!-- 11. Examine gender and race differences in prediction (Line 1955) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1692) -->
+<!-- 5. Obtain machine learning model results (Line 1768) -->
+<!-- 6. Make predictions on test dataset (Line 1830) -->
+<!-- 7. Create AUC curves (Line 1891) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1947) -->
+<!-- 9. Create calibration plot in test dataset (Line 2008) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2065) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2097) -->
 
 
 
@@ -696,7 +696,7 @@ save(model_french_new, file = './model_frenchCRS_new.RData')
 * eGFR
 * Sodium
 * Natural log of (BNP + 1) and NT-proBNP interaction
-* NT-proBNP
+* NT-proBNP (removed in a second model)
 * LVAD
 * Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
 
@@ -729,6 +729,14 @@ model_PCWP_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_PCWP_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -782,6 +790,14 @@ model_CPO_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_CPO_API_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -816,6 +832,21 @@ model_CPO_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+model_CPO_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+
+model_CPO_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -851,6 +882,14 @@ model_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_API_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -904,6 +943,15 @@ model_PAPI_CPO_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_PAPI_CPO_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -953,6 +1001,15 @@ model_PAPI_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_PAPI_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    papi + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -989,6 +1046,15 @@ model_CPO_PAPI_AST_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_CPO_PAPI_AST_API_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + api + AST + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -1025,6 +1091,14 @@ model_CPO_PAPI_API_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_CPO_PAPI_API_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -1062,6 +1136,15 @@ model_CPO_PAPI_AST_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+
+model_CPO_PAPI_AST_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    cpo + papi + AST + albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
 
 
@@ -1096,7 +1179,17 @@ model_no_hemo_results %>%
   kable(align=c('c', 'c', 'c')) %>%
   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
   column_spec(1, border_right=T)
+
+model_no_hemo_noBNP <- glm(formula = as.formula(
+  death6week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
 ```
+
+
 
 
 
@@ -1117,7 +1210,18 @@ model_comparison <- data.frame(
               'US-CRS with PAPi, API, AST',
               'US-CRS with PAPi and API',
               'US-CRS with PAPi and AST',
-              'US-CRS without Hemodynamics'),
+              'US-CRS without Hemodynamics',
+              
+              'US-CRS with PCWP, no BNP', 
+              'US-CRS with CPO and API, no BNP', 
+              'US-CRS with CPO Only, no BNP',
+              'US-CRS with API Only, no BNP',
+              'US-CRS with CPO and PAPi, no BNP',
+              'US-CRS with PAPi Only, no BNP',
+              'US-CRS with PAPi, API, AST, no BNP',
+              'US-CRS with PAPi and API, no BNP',
+              'US-CRS with PAPi and AST, no BNP',
+              'US-CRS without Hemodynamics, no BNP'),
   
   'AUC' = c(auc(df_intervals_train$death6week ~ 
                   predict(model_french_old, newdata = df_intervals_train, type = 'response', direction = '<')),
@@ -1142,7 +1246,34 @@ model_comparison <- data.frame(
             auc(df_intervals_train$death6week ~ 
                   predict(model_CPO_PAPI_AST, newdata = df_intervals_train, type = 'response', direction = '<')),
             auc(df_intervals_train$death6week ~ 
-                  predict(model_no_hemo, newdata = df_intervals_train, type = 'response', direction = '<'))),
+                  predict(model_no_hemo, newdata = df_intervals_train, type = 'response', direction = '<')),
+            
+            
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PCWP_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_API_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_API_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PAPI_CPO_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PAPI_noBNP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_AST_API_noBNP, 
+                          newdata = df_intervals_train, type = 'response', direction = '<')), 
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_API_noBNP, 
+                          newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_AST_noBNP, 
+                          newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_no_hemo_noBNP, newdata = df_intervals_train, type = 'response', direction = '<'))
+            
+            ),
   
   'AIC' = c(AIC(model_french_old), 
             AIC(model_french_new), 
@@ -1155,7 +1286,18 @@ model_comparison <- data.frame(
             AIC(model_CPO_PAPI_AST_API), 
             AIC(model_CPO_PAPI_API),
             AIC(model_CPO_PAPI_AST),
-            AIC(model_no_hemo))
+            AIC(model_no_hemo),
+            
+            AIC(model_PCWP_noBNP), 
+            AIC(model_CPO_API_noBNP), 
+            AIC(model_CPO_noBNP), 
+            AIC(model_API_noBNP), 
+            AIC(model_PAPI_CPO_noBNP), 
+            AIC(model_PAPI_noBNP), 
+            AIC(model_CPO_PAPI_AST_API_noBNP), 
+            AIC(model_CPO_PAPI_API_noBNP),
+            AIC(model_CPO_PAPI_AST_noBNP),
+            AIC(model_no_hemo_noBNP))
   )
 
 model_comparison$AUC <- round(model_comparison$AUC, digits = 3)
