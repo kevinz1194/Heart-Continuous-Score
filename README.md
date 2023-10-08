@@ -60,6 +60,8 @@ Updated 8/18/2023: Sensitivity analysis using MCS without balloon pump added. Mo
 
 Updated 8/22/2023: Make additional predictions on model with hemodynamics.
 
+Updated 10/7/2023: AUC instead of AIC is used for model selection. Gender and race disparities are examined as a sensitivity analysis.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
