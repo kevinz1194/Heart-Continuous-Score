@@ -7,16 +7,17 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 35) -->
-<!-- 2. Set up matrices for predictions (Line 149) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 605) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1536) -->
-<!-- 5. Obtain machine learning model results (Line 1612) -->
-<!-- 6. Make predictions on test dataset (Line 1674) -->
-<!-- 7. Create AUC curves (Line 1735) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1791) -->
-<!-- 9. Create calibration plot in test dataset (Line 1852) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 1909) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 36) -->
+<!-- 2. Set up matrices for predictions (Line 150) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 606) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1550) -->
+<!-- 5. Obtain machine learning model results (Line 1626) -->
+<!-- 6. Make predictions on test dataset (Line 1688) -->
+<!-- 7. Create AUC curves (Line 1749) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1805) -->
+<!-- 9. Create calibration plot in test dataset (Line 1866) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 1923) -->
+<!-- 11. Examine gender and race differences in prediction (Line 1955) -->
 
 
 
@@ -1102,6 +1103,8 @@ model_no_hemo_results %>%
 ### Compare model fits
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+df_intervals_train <- subset(df_intervals, df_intervals$train_test == 'Train')
+
 model_comparison <- data.frame(
   'Model' = c('Old French', 
               'New French',
@@ -1116,6 +1119,31 @@ model_comparison <- data.frame(
               'US-CRS with PAPi and AST',
               'US-CRS without Hemodynamics'),
   
+  'AUC' = c(auc(df_intervals_train$death6week ~ 
+                  predict(model_french_old, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_french_new, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PCWP, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_API, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_API, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PAPI_CPO, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_PAPI, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_AST_API, newdata = df_intervals_train, type = 'response', direction = '<')), 
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_API, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_CPO_PAPI_AST, newdata = df_intervals_train, type = 'response', direction = '<')),
+            auc(df_intervals_train$death6week ~ 
+                  predict(model_no_hemo, newdata = df_intervals_train, type = 'response', direction = '<'))),
+  
   'AIC' = c(AIC(model_french_old), 
             AIC(model_french_new), 
             AIC(model_PCWP), 
@@ -1127,24 +1155,10 @@ model_comparison <- data.frame(
             AIC(model_CPO_PAPI_AST_API), 
             AIC(model_CPO_PAPI_API),
             AIC(model_CPO_PAPI_AST),
-            AIC(model_no_hemo)),
-  
-  
-    'BIC' = c(BIC(model_french_old), 
-            BIC(model_french_new), 
-            BIC(model_PCWP), 
-            BIC(model_CPO_API), 
-            BIC(model_CPO), 
-            BIC(model_API), 
-            BIC(model_PAPI_CPO), 
-            BIC(model_PAPI), 
-            BIC(model_CPO_PAPI_AST_API), 
-            BIC(model_CPO_PAPI_API),
-            BIC(model_CPO_PAPI_AST),
-            BIC(model_no_hemo)))
+            AIC(model_no_hemo))
+  )
 
-model_comparison$AIC <- round(model_comparison$AIC, 3)
-model_comparison$BIC <- round(model_comparison$BIC, 3)
+model_comparison$AUC <- round(model_comparison$AUC, digits = 3)
 
 
 model_comparison %>%
@@ -1932,4 +1946,51 @@ df_intervals %>%
     strip.background = element_blank()) +
   facet_wrap(~ status, labeller = as_labeller(c('1' = 'Status 1', '2' = 'Status 2', '3' = 'Status 3',
                                                 '4' = 'Status 4', '5' = 'Status 5', '6' = 'Status 6')))
+```
+
+
+-------------
+
+
+# 11. Examine gender and race differences in prediction
+
+```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+df_gender_race <- df_intervals %>% select(PX_ID, uscrs_predict, 
+                                          uscrs_score)
+
+### Obtain gender and race from cand_thor
+df_candthor <- haven::read_sas('./cand_thor.sas7bdat') %>%
+  select(PX_ID, CAN_RACE, CAN_GENDER) %>%
+  mutate(female = case_when(
+    CAN_GENDER == 'F' ~ 'Female',
+    TRUE ~ 'Male'),
+    
+    race = case_when(
+      CAN_RACE == '8' ~ 'White',
+      TRUE ~ 'Not White')) %>%
+  
+  select(-c(CAN_GENDER, CAN_RACE))
+
+
+df_gender_race <- merge(df_gender_race, df_candthor, by = 'PX_ID', all.x = T, all.y = F)
+rm(df_candthor)
+df_gender_race <- subset(df_gender_race, !is.na(df_gender_race$uscrs_predict))
+df_gender_race <- df_gender_race %>% 
+  group_by(PX_ID) 
+
+
+
+df_gender_race %>%
+  filter(PX_ID %in% c(female_ids, male_ids)) %>%
+  tbl_summary(by = female, 
+              include = c('uscrs_predict', 'uscrs_score'),
+              digits = all_continuous() ~ 5) %>%
+  add_p()
+
+df_gender_race %>%
+  filter(PX_ID %in% c(white_ids, nonwhite_ids)) %>%
+  tbl_summary(by = race, 
+              include = c('uscrs_predict', 'uscrs_score'),
+              digits = all_continuous() ~ 5) %>%
+  add_p()
 ```
