@@ -54,13 +54,13 @@ Updated 7/11/2023: Main figure structure revised, now includes calibration and f
 
 Updated 7/13/2023: Colors changed, confidence intervals added.
 
-Updated 8/11/2023: Models add NT-proBNP, new French-CRS score.
+Updated 8/11/2023: Models add NT-proBNP, new French-CRS score added.
 
 Updated 8/18/2023: Sensitivity analysis using MCS without balloon pump added. Model changed to drop hemodynamics.
 
 Updated 8/22/2023: Make additional predictions on model with hemodynamics.
 
-Updated 10/7/2023: AUC, in addition to AIC, is used for model selection. Gender and race disparities are examined as a sensitivity analysis.
+Updated 10/8/2023: AUC, in addition to AIC, is used for model selection. An additional set of models without BNP is added. Gender and race disparities are examined as a sensitivity analysis.
 
 
 ### 5. results_unblocked.Rmd
