@@ -7,20 +7,20 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line ) -->
-<!-- 2. Set up matrices for predictions (Line ) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line ) -->
-<!-- 4. Run sensitivity logistic regression models (Line ) -->
-<!-- 5. Obtain machine learning model results (Line ) -->
-<!-- 6. Make predictions on test dataset (Line ) -->
-<!-- 7. Create AUC curves (Line ) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line ) -->
-<!-- 9. Create calibration plot in test dataset (Line ) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line ) -->
-<!-- 11. Examine gender and race differences in prediction (Line ) -->
-<!-- 12. Check for informative censoring (Line ) -->
-<!-- 13. Examine a model with center random effects (Line ) -->
-<!-- 14. Examine model performance based on temporal split (Line ) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 39) -->
+<!-- 2. Set up matrices for predictions (Line 152) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 608) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1692) -->
+<!-- 5. Obtain machine learning model results (Line 1768) -->
+<!-- 6. Make predictions on test dataset (Line 1830) -->
+<!-- 7. Create AUC curves (Line 1891) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1947) -->
+<!-- 9. Create calibration plot in test dataset (Line 2008) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2065) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2097) -->
+<!-- 12. Check for informative censoring (Line 2144) -->
+<!-- 13. Examine a model with center random effects (Line 2179) -->
+<!-- 14. Examine model performance based on temporal split (Line 2196) -->
 
 
 
