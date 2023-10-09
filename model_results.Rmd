@@ -7,17 +7,19 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 36) -->
-<!-- 2. Set up matrices for predictions (Line 150) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 606) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1692) -->
-<!-- 5. Obtain machine learning model results (Line 1768) -->
-<!-- 6. Make predictions on test dataset (Line 1830) -->
-<!-- 7. Create AUC curves (Line 1891) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1947) -->
-<!-- 9. Create calibration plot in test dataset (Line 2008) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2065) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2097) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line ) -->
+<!-- 2. Set up matrices for predictions (Line ) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line ) -->
+<!-- 4. Run sensitivity logistic regression models (Line ) -->
+<!-- 5. Obtain machine learning model results (Line ) -->
+<!-- 6. Make predictions on test dataset (Line ) -->
+<!-- 7. Create AUC curves (Line ) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line ) -->
+<!-- 9. Create calibration plot in test dataset (Line ) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line ) -->
+<!-- 11. Examine gender and race differences in prediction (Line ) -->
+<!-- 12. Check for informative censoring (Line ) -->
+<!-- 13. Examine a model with center random effects (Line ) -->
 
 
 
@@ -25,7 +27,7 @@ authors: Kevin Zhang
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
-pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot)
+pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot, lme4)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -137,7 +139,6 @@ df_intervals$train_test <-  'Test'
 df_intervals$train_test[df_intervals$CenterId %in% center_ids_train] <- 'Train'
 
 save(center_ids_train, file = './train_ids.RData')
-df_intervals$CenterId <- NULL
 
 
 save(df_intervals, file = './df_intervals_setup.RData') ### Save a cleaner copy
@@ -1191,8 +1192,6 @@ model_no_hemo_noBNP <- glm(formula = as.formula(
 
 
 
-
-
 ### Compare model fits
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -2135,4 +2134,55 @@ df_gender_race %>%
               include = c('uscrs_predict', 'uscrs_score'),
               digits = all_continuous() ~ 5) %>%
   add_p()
+```
+
+
+-------------
+
+
+# 12. Check for informative censoring
+
+```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+set.seed(500)
+sample_deaths <- sample(unique(df_intervals$PX_ID[df_intervals$death6week == '1']),
+                    size = 100, replace = F)
+sample_transplants <- sample(unique(df_intervals$PX_ID[df_intervals$transplant == '1']),
+                    size = 100, replace = F)
+
+df_censor <- df_intervals[df_intervals$PX_ID %in% c(sample_deaths, sample_transplants), 
+                          c('PX_ID', 'interval_stop', 'last_group',
+                            'death6week', 'transplant',
+                            'albumin', 'bilirubin',
+                            'eGFR', 'sodium', 'BNP',
+                            'LVAD', 'short_MCS_ever')]
+min_time <- min(df_censor$interval_stop[df_censor$last_group == '1' & df_censor$transplant == '1'])
+df_censor$transplant_death <- 'Transplant'
+df_censor$transplant_death[df_censor$PX_ID %in% sample_deaths] <- 'Death'
+
+df_censor <- subset(df_censor, df_censor$interval_stop <= min_time)
+df_censor <- df_censor[complete.cases(df_censor),]
+df_censor <- df_censor %>% select(-c(PX_ID, interval_stop, last_group,
+                                     death6week, transplant))
+
+
+df_censor %>% 
+  tbl_summary(by = transplant_death) %>%
+  add_p()
+```
+
+
+
+-------------
+
+
+# 13. Examine a model with center random effects
+```{r, echo=F, warning=F, message=F, comment=NA}
+model_mixed <- glmer(formula = as.formula(
+  death6week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever + (1 | CenterId)), 
+  data = df_intervals[df_intervals$train_test == 'Train',],
+  family = binomial)
 ```
