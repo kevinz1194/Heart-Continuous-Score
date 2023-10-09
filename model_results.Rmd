@@ -20,6 +20,7 @@ authors: Kevin Zhang
 <!-- 11. Examine gender and race differences in prediction (Line ) -->
 <!-- 12. Check for informative censoring (Line ) -->
 <!-- 13. Examine a model with center random effects (Line ) -->
+<!-- 14. Examine model performance based on temporal split (Line ) -->
 
 
 
@@ -2176,6 +2177,7 @@ df_censor %>%
 
 
 # 13. Examine a model with center random effects
+
 ```{r, echo=F, warning=F, message=F, comment=NA}
 model_mixed <- glmer(formula = as.formula(
   death6week ~ 
@@ -2185,4 +2187,72 @@ model_mixed <- glmer(formula = as.formula(
     LVAD + short_MCS_ever + (1 | CenterId)), 
   data = df_intervals[df_intervals$train_test == 'Train',],
   family = binomial)
+```
+
+
+
+-------------
+
+# 14. Examine model performance based on temporal split
+
+```{r, echo=F, warning=F, message=F, comment=NA}
+df_intervals$train_test <- 'Train'
+
+px_test <- unique(df_intervals$PX_ID)
+px_test <- px_test[(length(px_test) - floor(0.3*length(px_test)) + 1):length(px_test)]
+
+df_intervals$train_test[df_intervals$PX_ID %in% px_test] <- 'Test'
+df_intervals_train <- subset(df_intervals, df_intervals$train_test == 'Train')
+df_intervals_test <- subset(df_intervals, df_intervals$train_test == 'Test')
+
+
+
+model_french_new_temporal <- glm(formula = as.formula(
+  death6week ~ 
+    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro), 
+  data = df_intervals_train, 
+  family = binomial)
+
+
+model_final_temporal <- glm(formula = as.formula(
+  death6week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals_train, 
+  family = binomial)
+
+
+
+model_french_new_temporal_predict <- as.numeric(
+  predict(model_french_new, newdata = df_intervals_test, type = 'response'))
+model_french_new_temporal_indices <- which(!is.na(model_french_new_temporal_predict))
+model_french_new_temporal_predict <- na.omit(model_french_new_temporal_predict)
+df_intervals_test_model_french_new_temporal <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_new_temporal_indices), ]
+
+
+model_final_temporal_predict <- as.numeric(
+  predict(model_final_temporal, newdata = df_intervals_test, type = 'response'))
+model_final_temporal_indices <- which(!is.na(model_final_temporal_predict))
+model_final_temporal_predict <- na.omit(model_final_temporal_predict)
+df_intervals_test_model_final_temporal <- 
+  df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_temporal_indices), ]
+
+
+
+df_intervals_test$status_initial <- as.numeric(df_intervals_test$status_initial)
+result <- auc(df_intervals_test$death6week ~ df_intervals_test$status_initial, direction='>')
+result; ci.auc(result)
+
+
+result <- auc(df_intervals_test_model_french_new_temporal$death6week ~ model_french_new_temporal_predict, 
+              direction='<')
+result; ci.auc(result)
+
+
+result <- auc(df_intervals_test_model_final_temporal$death6week ~ model_final_temporal_predict, 
+              direction='<')
+result; ci.auc(result)
 ```
