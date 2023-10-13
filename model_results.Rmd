@@ -8,37 +8,46 @@ authors: Kevin Zhang
 ---
 
 <!-- 1. Set up dataset with generated cardiac variables (Line 39) -->
+
 <!-- 2. Set up matrices for predictions (Line 152) -->
+
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 608) -->
+
 <!-- 4. Run sensitivity logistic regression models (Line 1692) -->
+
 <!-- 5. Obtain machine learning model results (Line 1768) -->
+
 <!-- 6. Make predictions on test dataset (Line 1830) -->
+
 <!-- 7. Create AUC curves (Line 1891) -->
+
 <!-- 8. Variable importance plots from gradient-boosted models (Line 1947) -->
+
 <!-- 9. Create calibration plot in test dataset (Line 2008) -->
+
 <!-- 10. Create facet plot of 50 point score at initial listing (Line 2065) -->
+
 <!-- 11. Examine gender and race differences in prediction (Line 2097) -->
+
 <!-- 12. Check for informative censoring (Line 2144) -->
+
 <!-- 13. Examine a model with center random effects (Line 2179) -->
+
 <!-- 14. Examine model performance based on temporal split (Line 2196) -->
-
-
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot, lme4)
-knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
+knitr::opts_knit$set(root.dir = 'C:/Users/kevin/OneDrive - The University of Chicago/Pritzker/R/Heart-Continuous-Score')
 ```
 
-
----------------------------------
-
+------------------------------------------------------------------------
 
 # 1. Set up dataset with generated cardiac variables
-Starting dataset requires the interval dataset from **6week_death_data_prep.Rmd**.
 
+Starting dataset requires the interval dataset from **6week_death_data_prep.Rmd**.
 
 ```{r, warning=F, comment=NA}
 load('./intervals_v16_impute_6wkdeath.RData')
@@ -145,9 +154,7 @@ save(center_ids_train, file = './train_ids.RData')
 save(df_intervals, file = './df_intervals_setup.RData') ### Save a cleaner copy
 ```
 
-
----------------------------------
-
+------------------------------------------------------------------------
 
 # 2. Set up matrices for predictions
 
@@ -294,7 +301,6 @@ names(mat_train_all) <-  c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'I
                            'Sodium_Slope', 'Creatinine_Slope', 'Bilirubin_Slope', 'Albumin_Slope',
                            'Arterial_Lactate_Slope', 'BUN10_Slope', 'AST100_Slope', 'INR_Slope', 'BNP100_Slope')
 ```
-
 
 ### Testing matrices
 
@@ -533,7 +539,6 @@ df_intervals_test$status_initial <- factor(df_intervals_test$status_initial,
 df_intervals_test$train_test <- NULL
 ```
 
-
 ### Matrices for gradient-boosted models
 
 ```{r, warning=F, comment=NA}
@@ -601,13 +606,11 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
                              'Arterial_Lactate_Slope', 'BUN10_Slope', 'AST100_Slope', 'INR_Slope', 'BNP100_Slope')
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 3. Run selected logistic regression models and create coefficient plots
-All models are run in the training datasets.
 
+All models are run in the training datasets.
 
 ### 6-Status Model
 
@@ -620,14 +623,12 @@ model6status <- glm(formula = as.formula(
 save(model6status, file = './model_6status.RData') 
 ```
 
-
 ### Selected Model #1: Prior French score (includes balloon pumps)
 
-* Short term MCS (ECMO or Balloon Pump)
-* Natural log of (bilirubin + 1)
-* eGFR
-* Natural log of (BNP + 1) and NT-proBNP interaction
-
+-   Short term MCS (ECMO or Balloon Pump)
+-   Natural log of (bilirubin + 1)
+-   eGFR
+-   Natural log of (BNP + 1) and NT-proBNP interaction
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_french_old <- glm(formula = as.formula(
@@ -657,9 +658,7 @@ model_french_old_results %>%
 save(model_french_old, file = './model_frenchCRS_old.RData')
 ```
 
-
 ### Selected Model #2: New French candidate risk score
-
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_french_new <- glm(formula = as.formula(
@@ -689,19 +688,17 @@ model_french_new_results %>%
 save(model_french_new, file = './model_frenchCRS_new.RData')
 ```
 
-
 ### Selected Model #3: US candidate risk score with PCWP
 
-* Pulmonary capillary wedge pressure (PCWP)
-* Albumin
-* Natural log of (bilirubin + 1)
-* eGFR
-* Sodium
-* Natural log of (BNP + 1) and NT-proBNP interaction
-* NT-proBNP (removed in a second model)
-* LVAD
-* Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
-
+-   Pulmonary capillary wedge pressure (PCWP)
+-   Albumin
+-   Natural log of (bilirubin + 1)
+-   eGFR
+-   Sodium
+-   Natural log of (BNP + 1) and NT-proBNP interaction
+-   NT-proBNP (removed in a second model)
+-   LVAD
+-   Short MCS ever (ECMO ever, temporary surgery LVAD ever, BiVAD no discharge ever)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_PCWP <- glm(formula = as.formula(
@@ -741,13 +738,11 @@ model_PCWP_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #4: US candidate risk score with CPO, API
 
-* Replaces PCWP with Cardiac Pressure Output (CPO) and Aortic Pulsatility Index (API)
-* CPO = (1/541) x (Cardiac Output) x (2/3 x Systolic BP  +  1/3 x Diastolic BP)
-* API = (Systolic BP - Diastolic BP) / PCWP
-
+-   Replaces PCWP with Cardiac Pressure Output (CPO) and Aortic Pulsatility Index (API)
+-   CPO = (1/541) x (Cardiac Output) x (2/3 x Systolic BP + 1/3 x Diastolic BP)
+-   API = (Systolic BP - Diastolic BP) / PCWP
 
 #### Check that CPO and API are not heavily correlated
 
@@ -759,7 +754,6 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$api,
                                     use = 'pairwise.complete.obs', 
                                     method = 'spearman'))
 ```
-
 
 #### Model results
 
@@ -802,9 +796,7 @@ model_CPO_API_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #5: US candidate risk score with only CPO
-
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_CPO <- glm(formula = as.formula(
@@ -851,9 +843,7 @@ model_CPO_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #6: US candidate risk score with only API
-
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model_API <- glm(formula = as.formula(
@@ -894,12 +884,10 @@ model_API_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #7: US candidate risk score replacing API with PAPI
 
-* PAPI = (Systolic pulmonary artery pressure - diastolic pulmonary artery pressure) / right atrial pressure 
-* Right atrial pressure is central venous pressure
-
+-   PAPI = (Systolic pulmonary artery pressure - diastolic pulmonary artery pressure) / right atrial pressure
+-   Right atrial pressure is central venous pressure
 
 #### Check that CPO and PAPi are not heavily correlated
 
@@ -911,7 +899,6 @@ paste0('Spearman correlation ', cor(df_intervals$cpo, df_intervals$papi,
                                     use = 'pairwise.complete.obs', 
                                     method = 'spearman'))
 ```
-
 
 #### Model results
 
@@ -956,7 +943,6 @@ model_PAPI_CPO_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #8: US candidate risk score with only PAPI
 
 #### Correlation between PAPi and API
@@ -969,7 +955,6 @@ paste0('Spearman correlation ', cor(df_intervals$api, df_intervals$papi,
                                     use = 'pairwise.complete.obs', 
                                     method = 'spearman'))
 ```
-
 
 #### Model results
 
@@ -1013,7 +998,6 @@ model_PAPI_noBNP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
-
 
 ### Selected Model #9: US candidate risk score with PAPi, AST, and API
 
@@ -1059,7 +1043,6 @@ model_CPO_PAPI_AST_API_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #10: US candidate risk score with PAPi and API
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -1102,7 +1085,6 @@ model_CPO_PAPI_API_noBNP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
-
 
 ### Selected Model #11: US candidate risk score with PAPi and AST
 
@@ -1149,7 +1131,6 @@ model_CPO_PAPI_AST_noBNP <- glm(formula = as.formula(
   family = binomial)
 ```
 
-
 ### Selected Model #12: No hemodynamics
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -1190,8 +1171,6 @@ model_no_hemo_noBNP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
-
-
 
 ### Compare model fits
 
@@ -1309,7 +1288,6 @@ model_comparison %>%
   column_spec(1, border_right=T)
 ```
 
-
 ### Final US-CRS model: no hemodynamics
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -1347,7 +1325,6 @@ model_final_results %>%
 
 save(model_final, file = './model_USCRS.RData')
 ```
-
 
 ### Final US-CRS model: with hemodynamics
 
@@ -1387,9 +1364,7 @@ model_final_hemo_results %>%
 save(model_final_hemo, file = './model_USCRS_hemo.RData')
 ```
 
-
-----------------------------
-
+------------------------------------------------------------------------
 
 ### Coefficient plot of results without hemodynamics (Figure 1)
 
@@ -1535,8 +1510,7 @@ df_coefplot %>%
         legend.title = element_text(size = 18))  
 ```
 
-
-### Coefficient plot of results with CPO and PAPi 
+### Coefficient plot of results with CPO and PAPi
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_coefplot <- as.data.frame(summary(model_final_hemo)$coefficients)[ ,c('Estimate', 'Std. Error')]
@@ -1685,9 +1659,7 @@ df_coefplot %>%
         legend.title = element_text(size = 18))  
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 4. Run sensitivity logistic regression models
 
@@ -1725,7 +1697,6 @@ model_final_BP_results %>%
   column_spec(1, border_right=T)
 ```
 
-
 ### US-CRS with balloon pumps and perc LVAD in short-term MCS (with hemodynamics)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
@@ -1761,71 +1732,67 @@ model_hemo_BP_results %>%
   column_spec(1, border_right=T)
 ```
 
+------------------------------------------------------------------------
 
--------------
-
-
-# 5. Obtain machine learning model results 
+# 5. Obtain machine learning model results
 
 ### Elastic Net Regression, No Memory Variables
+
 Results from the elastic net regressions are obtained from **elastic_net_model.R**.
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-load('./Models/model_elastic_nomem_6wk.RData')
-
-model_elastic_nomem_results <- data.frame(
-  'Variable' = rownames(
-    coef(model_elastic_nomem$finalModel, 
-         model_elastic_nomem$bestTune$lambda, 
-         model_elastic_nomem$bestTune$alpha)),
-  
-  'Estimate' = as.numeric(
-    coef(model_elastic_nomem$finalModel, 
-         model_elastic_nomem$bestTune$lambda, 
-         model_elastic_nomem$bestTune$alpha)))
-
-
-model_elastic_nomem_results[ ,'Estimate'] <- 
-  signif(model_elastic_nomem_results[ ,'Estimate'], 2)
-model_elastic_nomem_results %>%
-  kable(align=c('c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
+# load('./Models/model_elastic_nomem_6wk.RData')
+# 
+# model_elastic_nomem_results <- data.frame(
+#   'Variable' = rownames(
+#     coef(model_elastic_nomem$finalModel, 
+#          model_elastic_nomem$bestTune$lambda, 
+#          model_elastic_nomem$bestTune$alpha)),
+#   
+#   'Estimate' = as.numeric(
+#     coef(model_elastic_nomem$finalModel, 
+#          model_elastic_nomem$bestTune$lambda, 
+#          model_elastic_nomem$bestTune$alpha)))
+# 
+# 
+# model_elastic_nomem_results[ ,'Estimate'] <- 
+#   signif(model_elastic_nomem_results[ ,'Estimate'], 2)
+# model_elastic_nomem_results %>%
+#   kable(align=c('c', 'c')) %>%
+#   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+#   column_spec(1, border_right=T)
 ```
-
 
 ### Elastic Net Regression, All Memory Variables
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
-load('./Models/model_elastic_mem_6wk.RData')
-
-model_elastic_all_results <- data.frame(
-  'Variable' = rownames(
-    coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda, model_elastic_all$bestTune$alpha)),
-  
-  'Estimate' = as.numeric(coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda,
-                               model_elastic_all$bestTune$alpha)))
-
-
-model_elastic_all_results[ ,'Estimate'] <- signif(model_elastic_all_results[ ,'Estimate'], 2)
-model_elastic_all_results %>%
-  kable(align=c('c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
+# load('./Models/model_elastic_mem_6wk.RData')
+# 
+# model_elastic_all_results <- data.frame(
+#   'Variable' = rownames(
+#     coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda, model_elastic_all$bestTune$alpha)),
+#   
+#   'Estimate' = as.numeric(coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda,
+#                                model_elastic_all$bestTune$alpha)))
+# 
+# 
+# model_elastic_all_results[ ,'Estimate'] <- signif(model_elastic_all_results[ ,'Estimate'], 2)
+# model_elastic_all_results %>%
+#   kable(align=c('c', 'c')) %>%
+#   kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+#   column_spec(1, border_right=T)
 ```
 
-
 ### Gradient-Boosted Model Results
+
 Results are obtained from the final iteration of **xgboost_mem_vars_model.R**.
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
-load('./Models/model_xgboost_nomem_final.RData')
-load('./Models/model_xgboost_mem_final.RData')
+# load('./Models/model_xgboost_nomem_final.RData')
+# load('./Models/model_xgboost_mem_final.RData')
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 6. Make predictions on test dataset
 
@@ -1852,41 +1819,39 @@ model_final_hemo_predict <- na.omit(model_final_hemo_predict)
 
 
 
-elastic_nomem_predict <- predict(model_elastic_nomem, 
-                                 newdata = mat_test, type = 'prob', 
-                                 na.action = na.pass)[,'1']
-nomem_indices <- which(!is.na(elastic_nomem_predict))
-elastic_nomem_predict<- na.omit(elastic_nomem_predict)
-
-elastic_all_predict <- predict(model_elastic_all, 
-                               newdata = mat_test_all, type = 'prob', 
-                               na.action = na.pass)[,'1']
-mem_indices <- which(!is.na(elastic_all_predict))
-elastic_all_predict<- na.omit(elastic_all_predict)
-
-
-xg_nomem_predict <- predict(model_xgboost_nomem, newdata = DMat_test)
-xg_all_predict <- predict(model_xgboost_mem, newdata = DMat_test_all)
+# elastic_nomem_predict <- predict(model_elastic_nomem,
+#                                  newdata = mat_test, type = 'prob',
+#                                  na.action = na.pass)[,'1']
+# nomem_indices <- which(!is.na(elastic_nomem_predict))
+# elastic_nomem_predict<- na.omit(elastic_nomem_predict)
+# 
+# elastic_all_predict <- predict(model_elastic_all,
+#                                newdata = mat_test_all, type = 'prob',
+#                                na.action = na.pass)[,'1']
+# mem_indices <- which(!is.na(elastic_all_predict))
+# elastic_all_predict<- na.omit(elastic_all_predict)
+# 
+# 
+# xg_nomem_predict <- predict(model_xgboost_nomem, newdata = DMat_test)
+# xg_all_predict <- predict(model_xgboost_mem, newdata = DMat_test_all)
 
 
 rownames(df_intervals_test) <- seq(1:nrow(df_intervals_test))
 
-df_intervals_test_nomem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% nomem_indices), ]
-df_intervals_test_mem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% mem_indices), ]
+# df_intervals_test_nomem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% nomem_indices), ]
+# df_intervals_test_mem <- df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% mem_indices), ]
 
-df_intervals_test_model_french_old <- 
+df_intervals_test_model_french_old <-
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_old_indices), ]
-df_intervals_test_model_french_new <- 
+df_intervals_test_model_french_new <-
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_french_new_indices), ]
-df_intervals_test_model_final <- 
+df_intervals_test_model_final <-
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_indices), ]
-df_intervals_test_model_final_hemo <- 
+df_intervals_test_model_final_hemo <-
   df_intervals_test[(as.numeric(rownames(df_intervals_test)) %in% model_final_hemo_indices), ]
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 7. Create AUC curves
 
@@ -1894,29 +1859,28 @@ df_intervals_test_model_final_hemo <-
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 # dev.new(width = 7,height = 6, noRStudioGD = T)
-pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
-          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no', lwd=2.5, quiet=T)
-pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
-          plot=T, print.auc=T, ci=T, ci.type = 'no',  
-          print.auc.y=0.45, smooth=T, lwd=2.5, col='wheat3', add=T, quiet=T)
-pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
-          plot=T, print.auc=T, ci=T, ci.type = 'no', 
-          print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
-pROC::roc(df_intervals_test_model_french_old$death6week ~ model_french_old_predict, direction='<',
-          plot=T, print.auc=T, ci=T, ci.type = 'no',
-          print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
-pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
-          plot=T, print.auc=T, ci=T, ci.type = 'no',
-          print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
-legend('bottomright', cex = 0.9, xpd = T,
-      legend = c('6-Status', 
-                 'Elastic Net',
-                 'Gradient-Boosted Model', 
-                 'Prior French CRS',
-                 'US CRS'),
-       col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
+# pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
+#           plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no', lwd=2.5, quiet=T)
+# pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
+#           plot=T, print.auc=T, ci=T, ci.type = 'no',  
+#           print.auc.y=0.45, smooth=T, lwd=2.5, col='wheat3', add=T, quiet=T)
+# pROC::roc(df_intervals_test$death6week ~ xg_all_predict, direction='<',
+#           plot=T, print.auc=T, ci=T, ci.type = 'no', 
+#           print.auc.y=0.40, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T)
+# pROC::roc(df_intervals_test_model_french_old$death6week ~ model_french_old_predict, direction='<',
+#           plot=T, print.auc=T, ci=T, ci.type = 'no',
+#           print.auc.y=0.35, smooth=T, lwd=2.5, col='#07090f', add=T, quiet=T)
+# pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
+#           plot=T, print.auc=T, ci=T, ci.type = 'no',
+#           print.auc.y=0.30, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T)
+# legend('bottomright', cex = 0.9, xpd = T,
+#       legend = c('6-Status', 
+#                  'Elastic Net',
+#                  'Gradient-Boosted Model', 
+#                  'Prior French CRS',
+#                  'US CRS'),
+#        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
-
 
 ### ROC curve for subset of models (Figure 2)
 
@@ -1940,70 +1904,64 @@ legend('bottomright', xpd = T,
        col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 8. Variable importance plots from gradient-boosted models
 
 ## Variable importance for XGBoost, No Memory
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
-importance1 <- importance1[importance1$Gain > 0.03, ]
-
-
-p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
-
-p1 <- p1 +  
-  theme_bw() + 
-  scale_fill_manual(values = '#880d1e') +
-  theme(
-    legend.position = 'none',
-    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_text(size = 14, margin = margin(r=5)),
-    axis.text.y = element_text(size = 13, margin = margin(r=5)),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    plot.title = element_blank()) 
+# importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
+# importance1 <- importance1[importance1$Gain > 0.03, ]
+# 
+# 
+# p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
+# 
+# p1 <- p1 +  
+#   theme_bw() + 
+#   scale_fill_manual(values = '#880d1e') +
+#   theme(
+#     legend.position = 'none',
+#     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
+#     axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+#     axis.title.y = element_text(size = 14, margin = margin(r=5)),
+#     axis.text.y = element_text(size = 13, margin = margin(r=5)),
+#     legend.title = element_text(size = 14),
+#     legend.text = element_text(size = 13),
+#     plot.title = element_blank()) 
 ```
-
 
 ## Variable importance for XGBoost, All Memory
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
-importance2 <- importance2[importance2$Gain > 0.03, ]
-
-
-p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
-
-p2 <- p2 +  
-  theme_bw() + 
-  scale_fill_manual(values = '#880d1e') +
-  ggtitle('') +
-  theme(
-    legend.position = 'none',
-    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_blank(),
-    axis.text.y = element_text(size = 13, margin = margin(r=5)),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    plot.title = element_blank()) 
+# importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
+# importance2 <- importance2[importance2$Gain > 0.03, ]
+# 
+# 
+# p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
+# 
+# p2 <- p2 +  
+#   theme_bw() + 
+#   scale_fill_manual(values = '#880d1e') +
+#   ggtitle('') +
+#   theme(
+#     legend.position = 'none',
+#     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+#     axis.title.x = element_text(size = 14, margin = margin(t=5)), 
+#     axis.text.x = element_text(size = 13, margin = margin(t=5)), 
+#     axis.title.y = element_blank(),
+#     axis.text.y = element_text(size = 13, margin = margin(r=5)),
+#     legend.title = element_text(size = 14),
+#     legend.text = element_text(size = 13),
+#     plot.title = element_blank()) 
 ```
-
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-cowplot::plot_grid(p1, p2, labels = 'AUTO', scale = 0.9)
+# cowplot::plot_grid(p1, p2, labels = 'AUTO', scale = 0.9)
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 9. Create calibration plot in test dataset (Figure 4)
 
@@ -2025,7 +1983,7 @@ df_intervals_test_calib <-
   df_intervals_test %>%
   mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
   group_by(decile_predictions) %>%
-  summarise(predicted = mean(uscrs_predict),
+  dplyr::summarise(predicted = mean(uscrs_predict),
             observed = mean(death6week),
             mean_uscrs =  mean(uscrs_score),
             total = n()) %>%
@@ -2058,9 +2016,7 @@ df_intervals_test_calib %>%
 lm(observed ~ predicted, data = df_intervals_test_calib)
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 10. Create facet plot of 50 point score at initial listing (Figure 3)
 
@@ -2090,9 +2046,7 @@ df_intervals %>%
                                                 '4' = 'Status 4', '5' = 'Status 5', '6' = 'Status 6')))
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 11. Examine gender and race differences in prediction
 
@@ -2123,23 +2077,21 @@ df_gender_race <- df_gender_race %>%
 
 
 df_gender_race %>%
-  filter(PX_ID %in% c(female_ids, male_ids)) %>%
+  # filter(PX_ID %in% c(female_ids, male_ids)) %>%
   tbl_summary(by = female, 
               include = c('uscrs_predict', 'uscrs_score'),
               digits = all_continuous() ~ 5) %>%
   add_p()
 
 df_gender_race %>%
-  filter(PX_ID %in% c(white_ids, nonwhite_ids)) %>%
+  # filter(PX_ID %in% c(white_ids, nonwhite_ids)) %>%
   tbl_summary(by = race, 
               include = c('uscrs_predict', 'uscrs_score'),
               digits = all_continuous() ~ 5) %>%
   add_p()
 ```
 
-
--------------
-
+------------------------------------------------------------------------
 
 # 12. Check for informative censoring
 
@@ -2171,10 +2123,7 @@ df_censor %>%
   add_p()
 ```
 
-
-
--------------
-
+------------------------------------------------------------------------
 
 # 13. Examine a model with center random effects
 
@@ -2189,9 +2138,7 @@ model_mixed <- glmer(formula = as.formula(
   family = binomial)
 ```
 
-
-
--------------
+------------------------------------------------------------------------
 
 # 14. Examine model performance based on temporal split
 

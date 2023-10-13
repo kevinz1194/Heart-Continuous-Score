@@ -30,7 +30,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr, cowplot)
-knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
+knitr::opts_knit$set(root.dir = 'C:/Users/kevin/OneDrive - The University of Chicago/Pritzker/R/Heart-Continuous-Score')
 ```
 
 
@@ -273,7 +273,8 @@ df <- df %>%
     
     as.numeric(dobutamine_dose) >= 7.5 | as.numeric(McsdWithRhfDobutamine) >= 7.5 | as.numeric(InotropeDobutamine) >= 7.5 |
     as.numeric(ExtMcsdDobutamine.y) >= 7.5 | as.numeric(ExtInotropeDobutamine.y) >= 7.5 | 
-    ExtInoMulDobutamine.y == 1 | ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 | InoMulDobutamine.y == 1 ~ 'High',
+    # ExtInoMulDobutamine.y == 1 | InoMulDobutamine.y == 1 |
+    ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -297,7 +298,8 @@ df <- df %>%
     
     as.numeric(milrinone_dose) >= 0.5 | as.numeric(McsdWithRhfMilrinone) >= 0.5 | as.numeric(InotropeMilrinone) >= 0.5 |
     as.numeric(ExtMcsdMilrinone.y) >= 0.5 | as.numeric(ExtInotropeMilrinone.y) >= 0.5 | 
-    ExtInoMulMilrinone.y == 1 | ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 | InoMulMilrinone.y == 1 ~ 'High',
+    # ExtInoMulMilrinone.y == 1 | InoMulMilrinone.y == 1 |
+    ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -321,7 +323,8 @@ df <- df %>%
     
     as.numeric(epinephrine_dose) >= 0.02 | as.numeric(McsdWithRhfEpinephrine) >= 0.02 | as.numeric(InotropeEpinephrine) >= 0.02 |
     as.numeric(ExtMcsdEpinephrine.y) >= 0.02 | as.numeric(ExtInotropeEpinephrine.y) >= 0.02 | 
-    ExtInoMulEpinephrine.y == 1 | ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 | InoMulEpinephrine.y == 1 ~ 'High',
+    # ExtInoMulEpinephrine.y == 1 | InoMulEpinephrine.y == 1 |
+    ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -1152,7 +1155,7 @@ df_intervals <- df_intervals %>%
          LVAD_ever = case_when(is.na(LVAD_ever) ~ '0', TRUE ~ LVAD_ever),
          RVAD_ever = case_when(is.na(RVAD_ever) ~ '0', TRUE ~ RVAD_ever),
          exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever),
-         temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ RVAD_ever),
+         temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ temp_surg_ever),
          BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ exception_ever))
 ```
          
