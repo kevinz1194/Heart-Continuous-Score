@@ -64,6 +64,8 @@ Updated 8/22/2023: Make additional predictions on model with hemodynamics.
 
 Updated 10/8/2023: AUC, in addition to AIC, is used for model selection. An additional set of models without BNP is added. Gender and race disparities are examined as a sensitivity analysis. Non-informative censoring is examined. An additional mixed-effects model is added. A sensitivity analysis with a different temporal split is added.
 
+Updated 10/14/2023: Code for specific thresholds of sensitivity and specificity are added.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
