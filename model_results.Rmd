@@ -2077,14 +2077,12 @@ df_gender_race <- df_gender_race %>%
 
 
 df_gender_race %>%
-  # filter(PX_ID %in% c(female_ids, male_ids)) %>%
   tbl_summary(by = female, 
               include = c('uscrs_predict', 'uscrs_score'),
               digits = all_continuous() ~ 5) %>%
   add_p()
 
 df_gender_race %>%
-  # filter(PX_ID %in% c(white_ids, nonwhite_ids)) %>%
   tbl_summary(by = race, 
               include = c('uscrs_predict', 'uscrs_score'),
               digits = all_continuous() ~ 5) %>%
