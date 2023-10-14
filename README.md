@@ -78,6 +78,7 @@ Updated 7/13/2023: Colors changed.
 
 Updated 8/11/2023: Accounts for NT-proBNP, new French-CRS score.
 
+Updated 10/14/2023: Updated notes on Harrell's c, also draws an AUC curve.
 Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations for US-CRS model with hemodynamics.
 
 Updated 8/25/2023: IABP, durable and perc LVAD variables added.
