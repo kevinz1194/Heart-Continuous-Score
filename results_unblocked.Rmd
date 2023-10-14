@@ -8,13 +8,14 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 33) -->
-<!-- 2. Comparison of training and testing datasets (Line 80) -->
-<!-- 3. Find missing % at listing (Line 203) -->
-<!-- 4. Impute values into unblocked dataset (Line 232) -->
-<!-- 5. Make predictions on unblocked dataset and calculate discrimination measurements (Line 341) -->
-<!-- 6. Cox PH with US-CRS predictors on unblocked (Line 468) -->
-<!-- 7. Make prediction figures on unblocked dataset (Line 483) -->
+<!-- 1. Set up continuous dataset (Line 34) -->
+<!-- 2. Comparison of training and testing datasets (Line 81) -->
+<!-- 3. Find missing % at listing (Line 204) -->
+<!-- 4. Impute values into unblocked dataset (Line 233) -->
+<!-- 5. Make predictions on unblocked dataset and calculate Harrell's c, Brier score (Line 342) -->
+<!-- 6. Create AUC curves (Line 471) -->
+<!-- 7. Cox PH with US-CRS predictors on unblocked (Line 500) -->
+<!-- 8. Make prediction figures on unblocked dataset (Line 515) -->
 
 
 
@@ -338,7 +339,9 @@ df <- df %>%
 ---------------------------------
 
 
-# 5. Make predictions on unblocked dataset and calculate discrimination measurements
+# 5. Make predictions on unblocked dataset and calculate Harrell's c, Brier score
+
+Note: Neither Harrell's c nor Brier score is included in the paper. 
 
 ### 6-Status
 6-Status model is obtained from Section 3 of **model_results.Rmd**
@@ -465,7 +468,36 @@ paste0('US-CRS, with Hemodynamics, Brier: ', DescTools::BrierScore(df_model_us_h
 ---------------------------------
 
 
-# 6. Cox PH with US-CRS predictors on unblocked
+# 6. Create AUC curves
+
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
+# dev.new(width = 7,height = 6, noRStudioGD = T)
+df$death <- as.numeric(as.character(df$death))
+df$status_initial <- factor(df$status_initial, levels=c('1', '2', '3', '4', '5', '6'), ordered=T)
+
+pROC::roc(data=df[df$train_test == 'Test', ], response=death, predictor=status_initial, direction='>',
+          plot=T, col='#880d1e', print.auc=T, ci=F,
+          lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
+          print.thres.cex = 1.2, 
+          print.thres.pattern= "Status%2.f",
+          print.auc.cex = 1.2,
+          legacy.axes=T)
+pROC::roc(df_model_french_new$death ~ df_model_french_new$predict, direction='<',
+          plot=T, print.auc=T, ci=F, ci.type = 'no',
+          print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
+pROC::roc(df_model_us$death ~ df_model_us$predict, direction='<',
+          plot=T, print.auc=T, ci=F, ci.type = 'no',
+          print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
+legend('bottomright', xpd = T,
+      legend = c('6-Status', 'Current French CRS', 'US CRS'),
+       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
+```
+
+
+---------------------------------
+
+
+# 7. Cox PH with US-CRS predictors on unblocked
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
 concordance(coxph(Surv(t_start, t_stop, death) ~ 
@@ -480,7 +512,7 @@ concordance(coxph(Surv(t_start, t_stop, death) ~
 ---------------------------------
 
 
-# 7. Make prediction figures on unblocked dataset
+# 8. Make prediction figures on unblocked dataset
 
 ## Boxplot of predicted risk by status (eFigure 3)
 
