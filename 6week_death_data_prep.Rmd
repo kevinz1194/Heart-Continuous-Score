@@ -21,7 +21,7 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 10. Impute variables (Line 1447) -->
 <!-- 11. Generate new clinical variables (Line 1594) -->
 <!-- 12. Histograms of variables (Line 1643) -->
-<!-- 13. Sample checks between blocked and unblocked (Line 1724) -->
+<!-- 13. Sample checks between blocked and unblocked (Line 1725) -->
 
 
 
@@ -869,7 +869,7 @@ df$sodium[df$sodium < 100] <- NA
 
 ### Save non-interval data
 ```{r, warning=F, comment=NA, message=F}
-save(df, file = './intervals_v16_continuous.RData')
+save(df, file = './intervals_v17_continuous.RData')
 ```
 
 
@@ -1693,6 +1693,7 @@ hist4 <- ggplot(df_histograms, aes(x=as.numeric(cpo))) +
   xlab('CPO') + ylab('') +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+options(scipen=10)
 hist5 <- ggplot(df_histograms, aes(x=as.numeric(bilirubin))) + 
   geom_histogram(fill='#880d1e', color='#880d1e') + 
   theme_bw() +
