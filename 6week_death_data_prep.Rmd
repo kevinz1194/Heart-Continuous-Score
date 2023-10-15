@@ -937,8 +937,7 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
 df_intervals <- df_intervals %>%
   group_by(PX_ID) %>%
   
-  # Changed from (interval_start <= max_time) to (interval_start < max_time)
-  filter(interval_start < max_time)
+  filter(interval_start < max_time | max_time == 0)
 
 
 ## Reassign last group flags to df_intervals
@@ -1642,7 +1641,7 @@ df_intervals %>%
 ### Save final dataset
 
 ```{r, warning=F, comment=NA, message=F}
-save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
+save(df_intervals, file = './intervals_v17_impute_6wkdeath.RData')
 ```
 
 

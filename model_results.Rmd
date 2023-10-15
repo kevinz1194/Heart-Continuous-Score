@@ -42,7 +42,7 @@ Starting dataset requires the interval dataset from **6week_death_data_prep.Rmd*
 
 
 ```{r, warning=F, comment=NA}
-load('./intervals_v16_impute_6wkdeath.RData')
+load('./intervals_v17_impute_6wkdeath.RData')
 
 
 ### Convert variable types to correct types
