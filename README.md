@@ -66,6 +66,8 @@ Updated 10/8/2023: AUC, in addition to AIC, is used for model selection. An addi
 
 Updated 10/14/2023: Code for specific thresholds of sensitivity and specificity are added.
 
+Updated 10/15/2023: Minor change to legend of AUC curves.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
