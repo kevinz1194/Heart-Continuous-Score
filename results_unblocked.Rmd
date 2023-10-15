@@ -8,14 +8,14 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 34) -->
-<!-- 2. Comparison of training and testing datasets (Line 81) -->
-<!-- 3. Find missing % at listing (Line 204) -->
-<!-- 4. Impute values into unblocked dataset (Line 233) -->
-<!-- 5. Make predictions on unblocked dataset and calculate Harrell's c, Brier score (Line 342) -->
-<!-- 6. Create AUC curves (Line 471) -->
-<!-- 7. Cox PH with US-CRS predictors on unblocked (Line 500) -->
-<!-- 8. Make prediction figures on unblocked dataset (Line 515) -->
+<!-- 1. Set up continuous dataset (Line 35) -->
+<!-- 2. Comparison of training and testing datasets (Line 82) -->
+<!-- 3. Find missing % at listing (Line 205) -->
+<!-- 4. Impute values into unblocked dataset (Line 234) -->
+<!-- 5. Make predictions on unblocked dataset and calculate Harrell's c, Brier score (Line 343) -->
+<!-- 6. Create AUC curves (Line 472) -->
+<!-- 7. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 501) -->
+<!-- 8. Make prediction figures on unblocked dataset (Line 529) -->
 
 
 
@@ -23,7 +23,8 @@ authors: Kevin Zhang
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
-pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools)
+pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, 
+               DescTools, risksetROC)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -497,15 +498,28 @@ legend('bottomright', xpd = T,
 ---------------------------------
 
 
-# 7. Cox PH with US-CRS predictors on unblocked
+# 7. Cox PH with US-CRS predictors on unblocked and generalized c-index
+
+Note: This section is not included in the paper.
 
 ```{r, warning=F, echo=F, message=F, comment=NA}
-concordance(coxph(Surv(t_start, t_stop, death) ~ 
+df$BNP_NT_Pro <- as.factor(df$BNP_NT_Pro)
+model_cox <- coxph(Surv(t_start, t_stop, death) ~ 
                     albumin + log(bilirubin + 1) + 
                     eGFR + sodium + 
                     (log(BNP + 1):BNP_NT_Pro) + LVAD + short_MCS_ever, 
-                  data = df_model_us), 
-            timewt = 'n')
+                  data = df[df$train_test == 'Train',])
+eta <- model_cox$linear.predictor
+
+df_train <- subset(df, df$train_test == 'Train')
+df_train$predict <- predict(model_cox, df_train)
+df_train <- df_train %>% filter(!is.na(predict))
+
+survival.time <- unlist(as.vector(df_train[,'t_stop']))
+survival.status <- unlist(as.vector(df_train[,'death']))
+
+risksetROC::risksetAUC(Stime = survival.time, status = survival.status,
+                       marker = eta, method = 'Cox', tmax = max(survival.time))
 ```
 
 
@@ -536,3 +550,5 @@ df_boxplot %>%
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 13))
 ```
+
+
