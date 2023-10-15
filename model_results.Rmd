@@ -14,14 +14,14 @@ authors: Kevin Zhang
 <!-- 5. Obtain machine learning model results (Line 1769) -->
 <!-- 6. Make predictions on test dataset (Line 1831) -->
 <!-- 7. Create AUC curves (Line 1892) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1948) -->
-<!-- 9. Create calibration plot in test dataset (Line 2009) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2066) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2098) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1951) -->
+<!-- 9. Create calibration plot in test dataset (Line 2012) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2069) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2101) -->
 <!-- 12. Check for informative censoring (Line 2259) -->
-<!-- 13. Examine a model with center random effects (Line 2291) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2309) -->
-<!-- 15. Examine model performance based on temporal split (Line 2368) -->
+<!-- 13. Examine a model with center random effects (Line 2295) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2312) -->
+<!-- 15. Examine model performance based on temporal split (Line 2371) -->
 
 
 
@@ -1392,7 +1392,7 @@ save(model_final_hemo, file = './model_USCRS_hemo.RData')
 ----------------------------
 
 
-### Coefficient plot of results without hemodynamics (Figure 1)
+### Coefficient plot of results without hemodynamics (eFigure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_coefplot <- as.data.frame(summary(model_final)$coefficients)[ ,c('Estimate', 'Std. Error')]
@@ -1515,7 +1515,7 @@ df_coefplot %>%
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
-  xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
                             'Log BNP, NT-proBNP', 
                             'Log BNP, Regular BNP', 
@@ -1664,7 +1664,7 @@ df_coefplot %>%
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
-  xlab('Log-Odds for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
                             expression('PAPi'^'c'), 'CPO',
                             'Log BNP, NT-proBNP', 
@@ -1762,46 +1762,6 @@ model_hemo_BP_results %>%
   column_spec(1, border_right=T)
 ```
 
-# US CRS with 2-week prediction window
-
-```{r}
-model_final_2wk <- glm(formula = as.formula(
-  death2week ~ 
-    albumin + log(bilirubin + 1) + 
-    eGFR + sodium + 
-    (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
-  data = df_intervals[df_intervals$train_test == 'Train',], 
-  family = binomial)
-
-model_final_2wk_results <- as.data.frame(summary(model_final_2wk)$coefficients)
-model_final_2wk_results$name <- rownames(model_final_2wk_results)
-
-model_final_2wk_results <- model_final_2wk_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model_final_2wk_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model_final_2wk_results) <- seq(1:nrow(model_final_2wk_results))
-model_final_2wk_results <- model_final_2wk_results %>% 
-  mutate(Estimate = round(Estimate, 3),
-         PValue = round(PValue, 3))
-
-model_final_2wk_results$Variable <- c('Intercept',  
-                                      'Albumin', 'Log Bilirubin+1',
-                                      'eGFR', 'Sodium', 
-                                      'LVAD', 'Short MCS Ever',
-                                      'Log BNP+1, Regular BNP',
-                                      'Log BNP+1, NT-proBNP')
-
-model_final_2wk_results %>%
-  kable(align=c('c', 'c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
-
-df_intervals_train_2wk <- df_intervals[df_intervals$train_test == 'Train',]
-
-auc(df_intervals_train_2wk$death2week ~ predict(model_final_2wk, 
-                                                newdata = df_intervals_train_2wk,
-                                                type = 'response', direction = '<'))
-```
 
 -------------
 
@@ -1934,7 +1894,8 @@ df_intervals_test_model_final_hemo <-
 ### ROC curve for models with all memory variables (eFigure 4)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
-# dev.new(width = 7,height = 6, noRStudioGD = T)
+# dev.new(width = 8, height = 8, noRStudioGD = T)
+par(xaxs='i')
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>', 
           plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no', lwd=2.5, quiet=T)
 pROC::roc(df_intervals_test_mem$death6week ~ elastic_all_predict, direction='<', 
@@ -1962,13 +1923,14 @@ legend('bottomright', cex = 0.9, xpd = T,
 ### ROC curve for subset of models (Figure 2)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
-# dev.new(width = 7,height = 6, noRStudioGD = T)
+# dev.new(width = 8, height = 8, noRStudioGD = T)
+par(xaxs='i')
 pROC::roc(data=df_intervals_test, response=death6week, predictor=status_initial, direction='>',
           plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
           lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
-          print.thres.cex = 1.2, 
+          print.thres.cex = 1.1, 
           print.thres.pattern= "Status%2.f",
-          print.auc.cex = 1.2,
+          print.auc.cex = 1.2, 
           legacy.axes=T)
 pROC::roc(df_intervals_test_model_french_new$death6week ~ model_french_new_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
@@ -1976,7 +1938,8 @@ pROC::roc(df_intervals_test_model_french_new$death6week ~ model_french_new_predi
 pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<',
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
-legend('bottomright', xpd = T,
+text(x=0.05, y=1.02, labels='Status 6')
+legend('bottomright', xpd = T, 
       legend = c('6-Status', 'Current French-CRS', 'US-CRS'),
        col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
 ```
