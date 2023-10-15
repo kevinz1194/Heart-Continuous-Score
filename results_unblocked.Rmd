@@ -15,7 +15,7 @@ authors: Kevin Zhang
 <!-- 5. Make predictions on unblocked dataset and calculate Harrell's c, Brier score (Line 343) -->
 <!-- 6. Create AUC curves (Line 472) -->
 <!-- 7. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 501) -->
-<!-- 8. Make prediction figures on unblocked dataset (Line 529) -->
+<!-- 8. Make prediction figures on unblocked dataset (Line 543) -->
 
 
 
@@ -518,8 +518,22 @@ df_train <- df_train %>% filter(!is.na(predict))
 survival.time <- unlist(as.vector(df_train[,'t_stop']))
 survival.status <- unlist(as.vector(df_train[,'death']))
 
+
+model_cox6 <- coxph(Surv(t_start, t_stop, death) ~ 
+                    status_initial, 
+                  data = df[df$train_test == 'Train',])
+eta6 <- model_cox6$linear.predictor
+
+survival.time6 <- unlist(as.vector(df[df$train_test == 'Train' & !is.na(df$status_initial),
+                                      't_stop']))
+survival.status6 <- unlist(as.vector(df[df$train_test == 'Train'& !is.na(df$status_initial),
+                                        'death']))
+
+
 risksetROC::risksetAUC(Stime = survival.time, status = survival.status,
                        marker = eta, method = 'Cox', tmax = max(survival.time))
+risksetROC::risksetAUC(Stime = survival.time6, status = survival.status6,
+                       marker = eta6, method = 'Cox', tmax = max(survival.time6))
 ```
 
 
@@ -550,5 +564,3 @@ df_boxplot %>%
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 13))
 ```
-
-
