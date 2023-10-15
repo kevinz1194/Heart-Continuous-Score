@@ -19,9 +19,9 @@ authors: Kevin Zhang
 <!-- 10. Create facet plot of 50 point score at initial listing (Line 2066) -->
 <!-- 11. Examine gender and race differences in prediction (Line 2098) -->
 <!-- 12. Check for informative censoring (Line 2259) -->
-<!-- 13. Examine a model with center random effects (Line 2294) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2312) -->
-<!-- 15. Examine model performance based on temporal split (Line 2371) -->
+<!-- 13. Examine a model with center random effects (Line 2291) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2309) -->
+<!-- 15. Examine model performance based on temporal split (Line 2368) -->
 
 
 
@@ -1726,53 +1726,6 @@ model_final_BP_results %>%
   column_spec(1, border_right=T)
 ```
 
-### US-CRS with 2-week survival window
-
-```{r}
-
-df_intervals <- df_intervals %>% 
-  group_by(PX_ID) %>% 
-  mutate(death2week = if_else(death6week == 1 & last_group == 1, 1, 0)) %>% 
-  ungroup()
-
-model_final_2wk <- glm(formula = as.formula(
-  death2week ~ 
-    albumin + log(bilirubin + 1) + 
-    eGFR + sodium + 
-    (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
-  data = df_intervals[df_intervals$train_test == 'Train',], 
-  family = binomial)
-
-model_final_2wk_results <- as.data.frame(summary(model_final_2wk)$coefficients)
-model_final_2wk_results$name <- rownames(model_final_2wk_results)
-
-model_final_2wk_results <- model_final_2wk_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
-colnames(model_final_2wk_results) <- c('Variable', 'Estimate', 'PValue')
-rownames(model_final_2wk_results) <- seq(1:nrow(model_final_2wk_results))
-model_final_2wk_results <- model_final_2wk_results %>% 
-  mutate(Estimate = round(Estimate, 3),
-           PValue = round(PValue, 3))
-
-model_final_2wk_results$Variable <- c('Intercept',  
-                                  'Albumin', 'Log Bilirubin+1',
-                                  'eGFR', 'Sodium', 
-                                  'LVAD', 'Short MCS Ever',
-                                  'Log BNP+1, Regular BNP',
-                                  'Log BNP+1, NT-proBNP')
-
-model_final_2wk_results %>%
-  kable(align=c('c', 'c', 'c')) %>%
-  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
-  column_spec(1, border_right=T)
-
-df_intervals_train_2wk <- df_intervals[df_intervals$train_test == 'Train',]
-
- auc(df_intervals_train_2wk$death2week ~ predict(model_final_2wk, 
-                          newdata = df_intervals_train_2wk,
-                          type = 'response', direction = '<'))
-```
-
 
 ### US-CRS with balloon pumps and perc LVAD in short-term MCS (with hemodynamics)
 
@@ -1960,8 +1913,8 @@ legend('bottomright', cex = 0.9, xpd = T,
       legend = c('6-Status', 
                  'Elastic Net',
                  'Gradient-Boosted Model', 
-                 'Prior French CRS',
-                 'US CRS'),
+                 'Prior French-CRS',
+                 'US-CRS'),
        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
 
@@ -1984,7 +1937,7 @@ pROC::roc(df_intervals_test_model_final$death6week ~ model_final_predict, direct
           plot=T, print.auc=T, ci=T, ci.type = 'no',
           print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
 legend('bottomright', xpd = T,
-      legend = c('6-Status', 'Current French CRS', 'US CRS'),
+      legend = c('6-Status', 'Current French-CRS', 'US-CRS'),
        col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
 ```
 
@@ -2165,21 +2118,18 @@ df_candthor <- haven::read_sas('./cand_thor.sas7bdat') %>%
 df_gender_race <- merge(df_gender_race, df_candthor, by = 'PX_ID', all.x = T, all.y = F)
 rm(df_candthor)
 df_gender_race <- subset(df_gender_race, !is.na(df_gender_race$uscrs_predict))
-df_gender_race <- df_gender_race %>% 
-  group_by(PX_ID) 
 
 
-
-df_gender_race %>%
+df_gender_race %>% ungroup() %>%
   tbl_summary(by = female, 
-              include = c('uscrs_predict', 'uscrs_score'),
-              digits = all_continuous() ~ 5) %>%
+              include = c('uscrs_predict', 'uscrs_score', 'death6week'),
+              digits = everything() ~ 5) %>%
   add_p()
 
-df_gender_race %>%
+df_gender_race %>% ungroup() %>%
   tbl_summary(by = race, 
-              include = c('uscrs_predict', 'uscrs_score'),
-              digits = all_continuous() ~ 5) %>%
+              include = c('uscrs_predict', 'uscrs_score', 'death6week'),
+              digits = everything() ~ 5) %>%
   add_p()
 
 
