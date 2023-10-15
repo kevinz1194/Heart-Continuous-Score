@@ -11,17 +11,17 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
  
 <!-- 1. Set up original modified dataset (Line 40) -->
 <!-- 2. Merge with status justification datasets and create variables (Line 158) -->
-<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 486) -->
-<!-- 4. Set up remaining clinical variables (Line 740) -->
-<!-- 5. Add in BNP type and fix sodium (Line 846) -->
-<!-- 6. Create intervals (Line 867) -->
-<!-- 7. Add memory variables (Line 1195) -->
-<!-- 8. Death in 6 weeks (Line 1337) -->
+<!-- 3. Merge with cand_thor dataset and create create time-related variables (Line 487) -->
+<!-- 4. Set up remaining clinical variables (Line 741) -->
+<!-- 5. Add in BNP type and fix sodium (Line 847) -->
+<!-- 6. Create intervals (Line 868) -->
+<!-- 7. Add memory variables (Line 1196) -->
+<!-- 8. Death in 6 weeks (Line 1338) -->
 <!-- 9. Count missingness (Line 1373) -->
-<!-- 10. Impute variables (Line 1446) -->
-<!-- 11. Generate new clinical variables (Line 1593) -->
-<!-- 12. Histograms of variables (Line 1642) -->
-<!-- 13. Sample checks between blocked and unblocked (Line 1723) -->
+<!-- 10. Impute variables (Line 1447) -->
+<!-- 11. Generate new clinical variables (Line 1594) -->
+<!-- 12. Histograms of variables (Line 1643) -->
+<!-- 13. Sample checks between blocked and unblocked (Line 1724) -->
 
 
 
@@ -273,7 +273,7 @@ df <- df %>%
     
     as.numeric(dobutamine_dose) >= 7.5 | as.numeric(McsdWithRhfDobutamine) >= 7.5 | as.numeric(InotropeDobutamine) >= 7.5 |
     as.numeric(ExtMcsdDobutamine.y) >= 7.5 | as.numeric(ExtInotropeDobutamine.y) >= 7.5 | 
-    ExtInoMulDobutamine.y == 1 | ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 | InoMulDobutamine.y == 1 ~ 'High',
+    ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -297,7 +297,7 @@ df <- df %>%
     
     as.numeric(milrinone_dose) >= 0.5 | as.numeric(McsdWithRhfMilrinone) >= 0.5 | as.numeric(InotropeMilrinone) >= 0.5 |
     as.numeric(ExtMcsdMilrinone.y) >= 0.5 | as.numeric(ExtInotropeMilrinone.y) >= 0.5 | 
-    ExtInoMulMilrinone.y == 1 | ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 | InoMulMilrinone.y == 1 ~ 'High',
+    ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1  ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -319,9 +319,10 @@ df %>%
 df <- df %>% 
   mutate(epinephrine = case_when(
     
-    as.numeric(epinephrine_dose) >= 0.02 | as.numeric(McsdWithRhfEpinephrine) >= 0.02 | as.numeric(InotropeEpinephrine) >= 0.02 |
+    as.numeric(epinephrine_dose) >= 0.02 | as.numeric(McsdWithRhfEpinephrine) >= 0.02 | 
+    as.numeric(InotropeEpinephrine) >= 0.02 |
     as.numeric(ExtMcsdEpinephrine.y) >= 0.02 | as.numeric(ExtInotropeEpinephrine.y) >= 0.02 | 
-    ExtInoMulEpinephrine.y == 1 | ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 | InoMulEpinephrine.y == 1 ~ 'High',
+    ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -1632,7 +1633,7 @@ df_intervals %>%
 ### Save final dataset
 
 ```{r, warning=F, comment=NA, message=F}
-save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
+save(df_intervals, file = './intervals_v17_impute_6wkdeath.RData')
 ```
 
 
