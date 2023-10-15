@@ -1392,7 +1392,7 @@ save(model_final_hemo, file = './model_USCRS_hemo.RData')
 ----------------------------
 
 
-### Coefficient plot of results without hemodynamics (eFigure 1)
+### Coefficient plot of results without hemodynamics (Figure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_coefplot <- as.data.frame(summary(model_final)$coefficients)[ ,c('Estimate', 'Std. Error')]
