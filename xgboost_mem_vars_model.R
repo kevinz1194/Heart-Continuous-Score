@@ -9,7 +9,7 @@ library(parallel)
 library(caret)
 
 
-load('./intervals_v16_impute_6wkdeath.RData')
+load('./intervals_v17_impute_6wkdeath.RData')
 
 factor_vars <- c('diagnosis', 'diabetes', 'dialysis', 'IV_inotropes', 'dobutamine', 
                  'dopamine', 'epinephrine', 'milrinone', 'IABP', 'ECMO', 'BiVAD', 'LVAD', 'RVAD',
