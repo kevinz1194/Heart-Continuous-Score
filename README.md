@@ -28,6 +28,8 @@ Updated 8/6/2023: BNP type (NT-proBNP) accounted for.
 
 Updated 8/14/2023: Added lower bound for sodium, and censoring date now uses the maximum of removal date, last active date, or last inactive date.
 
+Updated 10/15/2023: Typo with calculation of short-term MCS is fixed, error with maximum time fixed.
+
 
 ### 2. elastic_net_model.R
 Sample iteration of elastic net models with parameter tuning on alpha and lambda. Requires large amount of computational resources. Optional. Estimated runtime of several hours on a high-memory node.
