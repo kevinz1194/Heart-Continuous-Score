@@ -28,7 +28,7 @@ Updated 8/6/2023: BNP type (NT-proBNP) accounted for.
 
 Updated 8/14/2023: Added lower bound for sodium, and censoring date now uses the maximum of removal date, last active date, or last inactive date.
 
-Updated 10/15/2023: Typo with calculation of short-term MCS is fixed, error with maximum time fixed.
+Updated 10/15/2023: Typo with calculation of short-term MCS is fixed, new loop for maximum time.
 
 
 ### 2. elastic_net_model.R
