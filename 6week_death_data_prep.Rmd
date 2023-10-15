@@ -15,13 +15,13 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 4. Set up remaining clinical variables (Line 740) -->
 <!-- 5. Add in BNP type and fix sodium (Line 846) -->
 <!-- 6. Create intervals (Line 867) -->
-<!-- 7. Add memory variables (Line 1123) -->
-<!-- 8. Death in 6 weeks (Line 1265) -->
-<!-- 9. Count missingness (Line 1301) -->
-<!-- 10. Impute variables (Line 1375) -->
-<!-- 11. Generate new clinical variables (Line 1522) -->
-<!-- 12. Histograms of variables (Line 1571) -->
-<!-- 13. Sample checks between blocked and unblocked (Line 1652) -->
+<!-- 7. Add memory variables (Line 1195) -->
+<!-- 8. Death in 6 weeks (Line 1337) -->
+<!-- 9. Count missingness (Line 1373) -->
+<!-- 10. Impute variables (Line 1446) -->
+<!-- 11. Generate new clinical variables (Line 1593) -->
+<!-- 12. Histograms of variables (Line 1642) -->
+<!-- 13. Sample checks between blocked and unblocked (Line 1723) -->
 
 
 
@@ -30,7 +30,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr, cowplot)
-knitr::opts_knit$set(root.dir = 'C:/Users/kevin/OneDrive - The University of Chicago/Pritzker/R/Heart-Continuous-Score')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -273,8 +273,7 @@ df <- df %>%
     
     as.numeric(dobutamine_dose) >= 7.5 | as.numeric(McsdWithRhfDobutamine) >= 7.5 | as.numeric(InotropeDobutamine) >= 7.5 |
     as.numeric(ExtMcsdDobutamine.y) >= 7.5 | as.numeric(ExtInotropeDobutamine.y) >= 7.5 | 
-    # ExtInoMulDobutamine.y == 1 | InoMulDobutamine.y == 1 |
-    ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 ~ 'High',
+    ExtInoMulDobutamine.y == 1 | ExtInoSinDobutamine.y == 1 | InoSinDobutamine.y == 1 | InoMulDobutamine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -298,8 +297,7 @@ df <- df %>%
     
     as.numeric(milrinone_dose) >= 0.5 | as.numeric(McsdWithRhfMilrinone) >= 0.5 | as.numeric(InotropeMilrinone) >= 0.5 |
     as.numeric(ExtMcsdMilrinone.y) >= 0.5 | as.numeric(ExtInotropeMilrinone.y) >= 0.5 | 
-    # ExtInoMulMilrinone.y == 1 | InoMulMilrinone.y == 1 |
-    ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 ~ 'High',
+    ExtInoMulMilrinone.y == 1 | ExtInoSinMilrinone.y == 1 | InoSinMilrinone.y == 1 | InoMulMilrinone.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -323,8 +321,7 @@ df <- df %>%
     
     as.numeric(epinephrine_dose) >= 0.02 | as.numeric(McsdWithRhfEpinephrine) >= 0.02 | as.numeric(InotropeEpinephrine) >= 0.02 |
     as.numeric(ExtMcsdEpinephrine.y) >= 0.02 | as.numeric(ExtInotropeEpinephrine.y) >= 0.02 | 
-    # ExtInoMulEpinephrine.y == 1 | InoMulEpinephrine.y == 1 |
-    ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 ~ 'High',
+    ExtInoMulEpinephrine.y == 1 | ExtInoSinEpinephrine.y == 1 | InoSinEpinephrine.y == 1 | InoMulEpinephrine.y == 1 ~ 'High',
     
     TRUE ~ 'Not High'))
 
@@ -892,8 +889,7 @@ df <- df %>%
   group_by(PX_ID) %>%
   fill(status) %>%
   mutate(status = as.factor(status),
-         time = t_stop - t_start) %>% 
-  ungroup()
+         time = t_stop - t_start)
 ```
 
 
@@ -921,6 +917,7 @@ row_reps <- rep(1:nrow(df), df_setup$counts)
 df_intervals <- df[row_reps, ]
 
 
+
 df_intervals <- df_intervals %>% group_by(PX_ID) %>%
   mutate(
     interval = row_number(),
@@ -929,10 +926,9 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
     max_time = max(t_stop)) 
 ```
 
-# Convert continuous time-series to discrete-time format
 
-```{r}
-
+### Convert continuous time-series to discrete-time format
+```{r, warning=F, comment=NA, message=F}
 # Remove extra intervals
 df_intervals <- df_intervals %>%
   group_by(PX_ID) %>%
@@ -977,17 +973,13 @@ for (i in 1:(nrow(df_intervals))) {
   
   PX_ID_at_index <- df_intervals[i,]$PX_ID
   
-  # check if this interval is the first interval for the given patient
-  # if true, assign initial values from df to df_intervals
+  # Check if this interval is the first interval for the given patient
+  # If true, assign initial values from df to df_intervals
   if (df_intervals$interval_start[i] == 0) {
     
     initial_values <- df %>% 
       filter(PX_ID == PX_ID_at_index & t_start == 0) %>%
       select(all_of(vars_to_mutate))
-    
-    # tidyverse implementation, haven't figured this out yet
-    # df_intervals[i] <- df_intervals[i] %>% 
-    #   mutate_at(vars_to_mutate, ~initial_values)
     
     df_intervals$systolicBP[i] <- initial_values %>% pull(systolicBP)
     df_intervals$PCWP[i] <- initial_values %>% pull(PCWP)
@@ -1043,8 +1035,8 @@ for (i in 1:(nrow(df_intervals))) {
     df_intervals$MCSD_aortic_insf[i] <- initial_values %>% pull(MCSD_aortic_insf)
     df_intervals$angina[i] <- initial_values %>% pull(angina)
     
-    # check if this interval is the last interval for the given patient
-    # if true, assign final values from df to df_intervals
+    # Check if this interval is the last interval for the given patient
+    # If true, assign final values from df to df_intervals
   } else if (df_intervals$last_group[i] == 1) {
     
     final_values <- df %>% 
@@ -1107,7 +1099,7 @@ for (i in 1:(nrow(df_intervals))) {
     
   } else {
     
-    # find most recent row for the given patient in df that starts 
+    # Find most recent row for the given patient in df that starts 
     # before current interval in df_intervals, and assign values to 
     # current interval in df_intervals
     
@@ -1176,9 +1168,9 @@ for (i in 1:(nrow(df_intervals))) {
 }
 ```
 
+
 ### Clean up intervals
 ```{r, warning=F, comment=NA, message=F}
-
 ## Clean up old time variables and string variables 
 df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))
 df_intervals <- data.frame(lapply(df_intervals, trimws), stringsAsFactors = F) 
@@ -1379,7 +1371,6 @@ df_intervals <- df_intervals %>% select(-c(death_flag, death_time, deathdifferen
 
 
 # 9. Count missingness
-
 
 ### Add in weight, height, and gender for body surface area
 
@@ -1641,7 +1632,7 @@ df_intervals %>%
 ### Save final dataset
 
 ```{r, warning=F, comment=NA, message=F}
-save(df_intervals, file = './intervals_v17_impute_6wkdeath.RData')
+save(df_intervals, file = './intervals_v16_impute_6wkdeath.RData')
 ```
 
 
