@@ -892,7 +892,8 @@ df <- df %>%
   group_by(PX_ID) %>%
   fill(status) %>%
   mutate(status = as.factor(status),
-         time = t_stop - t_start)
+         time = t_stop - t_start) %>% 
+  ungroup()
 ```
 
 
@@ -920,7 +921,6 @@ row_reps <- rep(1:nrow(df), df_setup$counts)
 df_intervals <- df[row_reps, ]
 
 
-
 df_intervals <- df_intervals %>% group_by(PX_ID) %>%
   mutate(
     interval = row_number(),
@@ -929,178 +929,256 @@ df_intervals <- df_intervals %>% group_by(PX_ID) %>%
     max_time = max(t_stop)) 
 ```
 
+# Convert continuous time-series to discrete-time format
 
-### Account for changes between intervals
-```{r, warning=F, comment=NA, message=F}
-## Fill down status
-df_intervals <- df_intervals %>% 
-  group_by(PX_ID) %>%
-  fill(status, .direction = 'down')
+```{r}
 
-
-## Fill in previous row with data
-for(i in nrow(df_intervals):2) {
-  if(df_intervals$PX_ID[i] == df_intervals$PX_ID[i-1] & df_intervals$interval_start[i] > df_intervals$max_time[i]) {
-    
-    df_intervals$systolicBP[i] <- df_intervals$systolicBP[i-1]
-    df_intervals$PCWP[i] <- df_intervals$PCWP[i-1]
-    df_intervals$central_venous_pressure[i] <- df_intervals$central_venous_pressure[i-1]
-    df_intervals$cardiac_output[i] <- df_intervals$cardiac_output[i-1]
-    
-    df_intervals$arterial_lactate[i] <- df_intervals$arterial_lactate[i-1]
-    df_intervals$AST[i] <- df_intervals$AST[i-1]
-    df_intervals$creatinine[i] <- df_intervals$creatinine[i-1]
-    df_intervals$bilirubin[i] <- df_intervals$bilirubin[i-1]
-    df_intervals$albumin[i] <- df_intervals$albumin[i-1]
-    
-    df_intervals$sodium[i] <- df_intervals$sodium[i-1]
-    df_intervals$BNP[i] <- df_intervals$BNP[i-1]
-    df_intervals$BNP_NT_Pro[i] <- df_intervals$BNP_NT_Pro[i-1]
-    df_intervals$heart_rate[i] <- df_intervals$heart_rate[i-1]
-    df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i-1]
-    df_intervals$PASP[i] <- df_intervals$PASP[i-1]
-    
-    df_intervals$PADP[i] <- df_intervals$PADP[i-1]
-    df_intervals$hemoglobin[i] <- df_intervals$hemoglobin[i-1]
-    df_intervals$LDH[i] <- df_intervals$LDH[i-1]
-    df_intervals$BUN[i] <- df_intervals$BUN[i-1]
-    df_intervals$INR[i] <- df_intervals$INR[i-1]
-
-    df_intervals$diagnosis[i] <- df_intervals$diagnosis[i-1]
-    df_intervals$diabetes[i] <- df_intervals$diabetes[i-1]
-    df_intervals$dialysis[i] <- df_intervals$dialysis[i-1]
-    df_intervals$peripheral_vascular[i] <- df_intervals$peripheral_vascular[i-1]
-    df_intervals$status_criteria[i] <- df_intervals$status_criteria[i-1]
-    
-    df_intervals$status[i] <- df_intervals$status[i-1]
-    df_intervals$status_initial[i] <- df_intervals$status_initial[i-1]
-    df_intervals$exception[i] <- df_intervals$exception[i-1]
-    df_intervals$death_flag[i] <- df_intervals$death_flag[i-1]
-    df_intervals$last_group[i] <- df_intervals$last_group[i-1]
-    
-    df_intervals$dobutamine[i] <- df_intervals$dobutamine[i-1]
-    df_intervals$dopamine[i] <- df_intervals$dopamine[i-1]
-    df_intervals$epinephrine[i] <- df_intervals$epinephrine[i-1]
-    df_intervals$milrinone[i] <- df_intervals$milrinone[i-1]
-    df_intervals$IV_inotropes[i] <- df_intervals$IV_inotropes[i-1]
-    
-    df_intervals$IABP[i] <- df_intervals$IABP[i-1]
-    df_intervals$ECMO[i] <- df_intervals$ECMO[i-1]
-    df_intervals$BiVAD[i] <- df_intervals$BiVAD[i-1]
-    df_intervals$LVAD[i] <- df_intervals$LVAD[i-1]
-    df_intervals$RVAD[i] <- df_intervals$RVAD[i-1]
-
-    df_intervals$MSCD_complication[i] <- df_intervals$MSCD_complication[i-1]
-    df_intervals$age[i] <- df_intervals$age[i-1]
-    df_intervals$life_arrhythmia[i] <- df_intervals$life_arrhythmia[i-1]
-    
-    df_intervals$BiVAD_no_discharge[i] <- df_intervals$BiVAD_no_discharge[i-1]
-    df_intervals$temp_surg_LVAD[i] <- df_intervals$temp_surg_LVAD[i-1]
-    df_intervals$other_durable_MCSD[i] <- df_intervals$other_durable_MCSD[i-1]
-    df_intervals$MCSD_malfunction[i] <- df_intervals$MCSD_malfunction[i-1]
-    df_intervals$v_tach_fib[i] <- df_intervals$v_tach_fib[i-1]
-    df_intervals$perc_LVAD[i] <- df_intervals$perc_LVAD[i-1]
-    df_intervals$MCSD_hemolysis[i] <- df_intervals$MCSD_hemolysis[i-1]
-    df_intervals$MCSD_rhf[i] <- df_intervals$MCSD_rhf[i-1]
-    df_intervals$MCSD_device_infx[i] <- df_intervals$MCSD_device_infx[i-1]
-    df_intervals$MCSD_bleed[i] <- df_intervals$MCSD_bleed[i-1]
-    df_intervals$MCSD_aortic_insf[i] <- df_intervals$MCSD_aortic_insf[i-1]
-    df_intervals$angina[i] <- df_intervals$angina[i-1]
-    
-  }
-}
-
-
-## Check changes; must check if changes in next row, since a row can be as little as 1 day- check up to 14 rows after
-for(j in 1:14) {
-  for(i in 1:(nrow(df_intervals)-j)) {
-    if(df_intervals$interval_start[i] <= df_intervals$t_start[i+j] & 
-       df_intervals$interval_stop[i] >= df_intervals$t_stop[i+j] &
-       df_intervals$PX_ID[i] == df_intervals$PX_ID[i+j]) {
-      
-      df_intervals$systolicBP[i] <- df_intervals$systolicBP[i+j]
-      df_intervals$PCWP[i] <- df_intervals$PCWP[i+j]
-      df_intervals$central_venous_pressure[i] <- df_intervals$central_venous_pressure[i+j]
-      df_intervals$cardiac_output[i] <- df_intervals$cardiac_output[i+j]
-      
-      df_intervals$arterial_lactate[i] <- df_intervals$arterial_lactate[i+j]
-      df_intervals$AST[i] <- df_intervals$AST[i+j]
-      df_intervals$creatinine[i] <- df_intervals$creatinine[i+j]
-      df_intervals$bilirubin[i] <- df_intervals$bilirubin[i+j]
-      df_intervals$albumin[i] <- df_intervals$albumin[i+j]
-      
-      df_intervals$sodium[i] <- df_intervals$sodium[i+j]
-      df_intervals$BNP[i] <- df_intervals$BNP[i+j]
-      df_intervals$BNP_NT_Pro[i] <- df_intervals$BNP_NT_Pro[i+j]
-      df_intervals$heart_rate[i] <- df_intervals$heart_rate[i+j]
-      df_intervals$diastolicBP[i] <- df_intervals$diastolicBP[i+j]
-      df_intervals$PASP[i] <- df_intervals$PASP[i+j]
-      
-      df_intervals$PADP[i] <- df_intervals$PADP[i+j]
-      df_intervals$hemoglobin[i] <- df_intervals$hemoglobin[i+j]
-      df_intervals$LDH[i] <- df_intervals$LDH[i+j]
-      df_intervals$BUN[i] <- df_intervals$BUN[i+j]
-      df_intervals$INR[i] <- df_intervals$INR[i+j]
-      
-      df_intervals$diagnosis[i] <- df_intervals$diagnosis[i+j]
-      df_intervals$diabetes[i] <- df_intervals$diabetes[i+j]
-      df_intervals$dialysis[i] <- df_intervals$dialysis[i+j]
-      df_intervals$peripheral_vascular[i] <- df_intervals$peripheral_vascular[i+j]
-      df_intervals$status_criteria[i] <- df_intervals$status_criteria[i+j]
-      
-      df_intervals$status[i] <- df_intervals$status[i+j]
-      df_intervals$status_initial[i] <- df_intervals$status_initial[i+j]
-      df_intervals$exception[i] <- df_intervals$exception[i+j]
-      
-      df_intervals$dobutamine[i] <- max(df_intervals$dobutamine[i], df_intervals$dobutamine[i+j])
-      df_intervals$dopamine[i] <- max(df_intervals$dopamine[i], df_intervals$dopamine[i+j])
-      df_intervals$epinephrine[i] <- max(df_intervals$epinephrine[i], df_intervals$epinephrine[i+j])
-      df_intervals$milrinone[i] <- max(df_intervals$milrinone[i], df_intervals$milrinone[i+j])
-      df_intervals$IV_inotropes[i] <- df_intervals$IV_inotropes[i+j]
-      
-      df_intervals$IABP[i] <- df_intervals$IABP[i+j]
-      df_intervals$ECMO[i] <- df_intervals$ECMO[i+j]
-      df_intervals$BiVAD[i] <- df_intervals$BiVAD[i+j]
-      df_intervals$LVAD[i] <- df_intervals$LVAD[i+j]
-      df_intervals$RVAD[i] <- df_intervals$RVAD[i+j]
-      
-      df_intervals$MSCD_complication[i] <- df_intervals$MSCD_complication[i+j]
-      df_intervals$age[i] <- df_intervals$age[i+j]
-      df_intervals$life_arrhythmia[i] <- df_intervals$life_arrhythmia[i+j]
-      
-      df_intervals$BiVAD_no_discharge[i] <- df_intervals$BiVAD_no_discharge[i+j]
-      df_intervals$temp_surg_LVAD[i] <- df_intervals$temp_surg_LVAD[i+j]
-      df_intervals$other_durable_MCSD[i] <- df_intervals$other_durable_MCSD[i+j]
-      df_intervals$MCSD_malfunction[i] <- df_intervals$MCSD_malfunction[i+j]
-      df_intervals$v_tach_fib[i] <- df_intervals$v_tach_fib[i+j]
-      df_intervals$perc_LVAD[i] <- df_intervals$perc_LVAD[i+j]
-      df_intervals$MCSD_hemolysis[i] <- df_intervals$MCSD_hemolysis[i+j]
-      df_intervals$MCSD_rhf[i] <- df_intervals$MCSD_rhf[i+j]
-      df_intervals$MCSD_device_infx[i] <- df_intervals$MCSD_device_infx[i+j]
-      df_intervals$MCSD_bleed[i] <- df_intervals$MCSD_bleed[i+j]
-      df_intervals$MCSD_aortic_insf[i] <- df_intervals$MCSD_aortic_insf[i+j]
-      df_intervals$angina[i] <- df_intervals$angina[i+j]
-      } 
-  }
-}
-```
-
-
-### Clean up intervals
-```{r, warning=F, comment=NA, message=F}
-# Remove extra intervals from floor
+# Remove extra intervals
 df_intervals <- df_intervals %>%
   group_by(PX_ID) %>%
-  filter(interval_start <= max_time)
+  
+  # Changed from (interval_start <= max_time) to (interval_start < max_time)
+  filter(interval_start < max_time)
 
 
-## Reassign last group flags
+## Reassign last group flags to df_intervals
 df_intervals <- df_intervals %>% group_by(PX_ID) %>%
   mutate(
     last_group = case_when(
       row_number() == n() ~ 1,
-      TRUE ~ 0))
+      TRUE ~ 0)) %>% 
+  ungroup()
 
+## Reassign last group flags to df
+df <- df %>% group_by(PX_ID) %>%
+  mutate(
+    last_group = case_when(
+      row_number() == n() ~ 1,
+      TRUE ~ 0)) %>% 
+  ungroup()
+
+vars_to_mutate <- c("systolicBP", "PCWP", 
+                    "central_venous_pressure", "cardiac_output",
+                    "arterial_lactate",
+                    "AST", "creatinine", "bilirubin", "albumin",
+                    "sodium", "BNP", "BNP_NT_Pro", "heart_rate", "diastolicBP",
+                    "PASP", "PADP", "hemoglobin", "LDH", "BUN", "INR", "diagnosis",
+                    "diabetes", "dialysis", "peripheral_vascular", "status_criteria",
+                    "status", "status_initial",
+                    "exception", "dobutamine", "dopamine", "epinephrine",
+                    "milrinone", "IV_inotropes", "IABP", "ECMO", "BiVAD", "LVAD",
+                    "RVAD", "MCSD_complication", "age", "life_arrhythmia",
+                    "BiVAD_no_discharge",
+                    "temp_surg_LVAD", "other_durable_MCSD", "MCSD_malfunction",
+                    "v_tach_fib", "perc_LVAD", "MCSD_hemolysis", "MCSD_rhf", 
+                    "MCSD_device_infx", "MCSD_bleed", "MCSD_aortic_insf", 
+                    "angina")
+
+for (i in 1:(nrow(df_intervals))) {
+  
+  PX_ID_at_index <- df_intervals[i,]$PX_ID
+  
+  # check if this interval is the first interval for the given patient
+  # if true, assign initial values from df to df_intervals
+  if (df_intervals$interval_start[i] == 0) {
+    
+    initial_values <- df %>% 
+      filter(PX_ID == PX_ID_at_index & t_start == 0) %>%
+      select(all_of(vars_to_mutate))
+    
+    # tidyverse implementation, haven't figured this out yet
+    # df_intervals[i] <- df_intervals[i] %>% 
+    #   mutate_at(vars_to_mutate, ~initial_values)
+    
+    df_intervals$systolicBP[i] <- initial_values %>% pull(systolicBP)
+    df_intervals$PCWP[i] <- initial_values %>% pull(PCWP)
+    df_intervals$central_venous_pressure[i] <- initial_values %>% pull(central_venous_pressure)
+    df_intervals$cardiac_output[i] <- initial_values %>% pull(cardiac_output)
+    df_intervals$arterial_lactate[i] <- initial_values %>% pull(arterial_lactate)
+    df_intervals$AST[i] <- initial_values %>% pull(AST)
+    df_intervals$creatinine[i] <- initial_values %>% pull(creatinine)
+    df_intervals$bilirubin[i] <- initial_values %>% pull(bilirubin)
+    df_intervals$albumin[i] <- initial_values %>% pull(albumin)
+    df_intervals$sodium[i] <- initial_values %>% pull(sodium)
+    df_intervals$BNP[i] <- initial_values %>% pull(BNP)
+    df_intervals$BNP_NT_Pro[i] <- initial_values %>% pull(BNP_NT_Pro)
+    df_intervals$heart_rate[i] <- initial_values %>% pull(heart_rate)
+    df_intervals$diastolicBP[i] <- initial_values %>% pull(diastolicBP)
+    df_intervals$PASP[i] <- initial_values %>% pull(PASP)
+    df_intervals$PADP[i] <- initial_values %>% pull(PADP)
+    df_intervals$hemoglobin[i] <- initial_values %>% pull(hemoglobin)
+    df_intervals$LDH[i] <- initial_values %>% pull(LDH)
+    df_intervals$BUN[i] <- initial_values %>% pull(BUN)
+    df_intervals$INR[i] <- initial_values %>% pull(INR)
+    df_intervals$diagnosis[i] <- initial_values %>% pull(diagnosis)
+    df_intervals$diabetes[i] <- initial_values %>% pull(diabetes)
+    df_intervals$dialysis[i] <- initial_values %>% pull(dialysis)
+    df_intervals$peripheral_vascular[i] <- initial_values %>% pull(peripheral_vascular)
+    df_intervals$status_criteria[i] <- initial_values %>% pull(status_criteria)
+    df_intervals$status[i] <- initial_values %>% pull(status)
+    df_intervals$status_initial[i] <- initial_values %>% pull(status_initial)
+    df_intervals$exception[i] <- initial_values %>% pull(exception)
+    df_intervals$dobutamine[i] <- initial_values %>% pull(dobutamine)
+    df_intervals$dopamine[i] <- initial_values %>% pull(dopamine)
+    df_intervals$epinephrine[i] <- initial_values %>% pull(epinephrine)
+    df_intervals$milrinone[i] <- initial_values %>% pull(milrinone)
+    df_intervals$IV_inotropes[i] <- initial_values %>% pull(IV_inotropes)
+    df_intervals$IABP[i] <- initial_values %>% pull(IABP)
+    df_intervals$ECMO[i] <- initial_values %>% pull(ECMO)
+    df_intervals$BiVAD[i] <- initial_values %>% pull(BiVAD)
+    df_intervals$LVAD[i] <- initial_values %>% pull(LVAD)
+    df_intervals$RVAD[i] <- initial_values %>% pull(RVAD)
+    df_intervals$MCSD_complication[i] <- initial_values %>% pull(MCSD_complication)
+    df_intervals$age[i] <- initial_values %>% pull(age)    
+    df_intervals$life_arrhythmia[i] <- initial_values %>% pull(life_arrhythmia)
+    df_intervals$BiVAD_no_discharge[i] <- initial_values %>% pull(BiVAD_no_discharge)
+    df_intervals$temp_surg_LVAD[i] <- initial_values %>% pull(temp_surg_LVAD)
+    df_intervals$other_durable_MCSD[i] <- initial_values %>% pull(other_durable_MCSD)
+    df_intervals$MCSD_malfunction[i] <- initial_values %>% pull(MCSD_malfunction)
+    df_intervals$v_tach_fib[i] <- initial_values %>% pull(v_tach_fib)
+    df_intervals$perc_LVAD[i] <- initial_values %>% pull(perc_LVAD)
+    df_intervals$MCSD_hemolysis[i] <- initial_values %>% pull(MCSD_hemolysis)
+    df_intervals$MCSD_rhf[i] <- initial_values %>% pull(MCSD_rhf)
+    df_intervals$MCSD_device_infx[i] <- initial_values %>% pull(MCSD_device_infx)
+    df_intervals$MCSD_bleed[i] <- initial_values %>% pull(MCSD_bleed)
+    df_intervals$MCSD_aortic_insf[i] <- initial_values %>% pull(MCSD_aortic_insf)
+    df_intervals$angina[i] <- initial_values %>% pull(angina)
+    
+    # check if this interval is the last interval for the given patient
+    # if true, assign final values from df to df_intervals
+  } else if (df_intervals$last_group[i] == 1) {
+    
+    final_values <- df %>% 
+      filter(PX_ID == PX_ID_at_index & last_group == 1) %>%
+      select(all_of(vars_to_mutate))
+    
+    df_intervals$systolicBP[i] <- final_values %>% pull(systolicBP)
+    df_intervals$PCWP[i] <- final_values %>% pull(PCWP)
+    df_intervals$central_venous_pressure[i] <- final_values %>% pull(central_venous_pressure)
+    df_intervals$cardiac_output[i] <- final_values %>% pull(cardiac_output)
+    df_intervals$arterial_lactate[i] <- final_values %>% pull(arterial_lactate)
+    df_intervals$AST[i] <- final_values %>% pull(AST)
+    df_intervals$creatinine[i] <- final_values %>% pull(creatinine)
+    df_intervals$bilirubin[i] <- final_values %>% pull(bilirubin)
+    df_intervals$albumin[i] <- final_values %>% pull(albumin)
+    df_intervals$sodium[i] <- final_values %>% pull(sodium)
+    df_intervals$BNP[i] <- final_values %>% pull(BNP)
+    df_intervals$BNP_NT_Pro[i] <- final_values %>% pull(BNP_NT_Pro)
+    df_intervals$heart_rate[i] <- final_values %>% pull(heart_rate)
+    df_intervals$diastolicBP[i] <- final_values %>% pull(diastolicBP)
+    df_intervals$PASP[i] <- final_values %>% pull(PASP)
+    df_intervals$PADP[i] <- final_values %>% pull(PADP)
+    df_intervals$hemoglobin[i] <- final_values %>% pull(hemoglobin)
+    df_intervals$LDH[i] <- final_values %>% pull(LDH)
+    df_intervals$BUN[i] <- final_values %>% pull(BUN)
+    df_intervals$INR[i] <- final_values %>% pull(INR)
+    df_intervals$diagnosis[i] <- final_values %>% pull(diagnosis)
+    df_intervals$diabetes[i] <- final_values %>% pull(diabetes)
+    df_intervals$dialysis[i] <- final_values %>% pull(dialysis)
+    df_intervals$peripheral_vascular[i] <- final_values %>% pull(peripheral_vascular)
+    df_intervals$status_criteria[i] <- final_values %>% pull(status_criteria)
+    df_intervals$status[i] <- final_values %>% pull(status)
+    df_intervals$status_initial[i] <- final_values %>% pull(status_initial)
+    df_intervals$exception[i] <- final_values %>% pull(exception)
+    df_intervals$dobutamine[i] <- final_values %>% pull(dobutamine)
+    df_intervals$dopamine[i] <- final_values %>% pull(dopamine)
+    df_intervals$epinephrine[i] <- final_values %>% pull(epinephrine)
+    df_intervals$milrinone[i] <- final_values %>% pull(milrinone)
+    df_intervals$IV_inotropes[i] <- final_values %>% pull(IV_inotropes)
+    df_intervals$IABP[i] <- final_values %>% pull(IABP)
+    df_intervals$ECMO[i] <- final_values %>% pull(ECMO)
+    df_intervals$BiVAD[i] <- final_values %>% pull(BiVAD)
+    df_intervals$LVAD[i] <- final_values %>% pull(LVAD)
+    df_intervals$RVAD[i] <- final_values %>% pull(RVAD)
+    df_intervals$MCSD_complication[i] <- final_values %>% pull(MCSD_complication)
+    df_intervals$age[i] <- final_values %>% pull(age)    
+    df_intervals$life_arrhythmia[i] <- final_values %>% pull(life_arrhythmia)
+    df_intervals$BiVAD_no_discharge[i] <- final_values %>% pull(BiVAD_no_discharge)
+    df_intervals$temp_surg_LVAD[i] <- final_values %>% pull(temp_surg_LVAD)
+    df_intervals$other_durable_MCSD[i] <- final_values %>% pull(other_durable_MCSD)
+    df_intervals$MCSD_malfunction[i] <- final_values %>% pull(MCSD_malfunction)
+    df_intervals$v_tach_fib[i] <- final_values %>% pull(v_tach_fib)
+    df_intervals$perc_LVAD[i] <- final_values %>% pull(perc_LVAD)
+    df_intervals$MCSD_hemolysis[i] <- final_values %>% pull(MCSD_hemolysis)
+    df_intervals$MCSD_rhf[i] <- final_values %>% pull(MCSD_rhf)
+    df_intervals$MCSD_device_infx[i] <- final_values %>% pull(MCSD_device_infx)
+    df_intervals$MCSD_bleed[i] <- final_values %>% pull(MCSD_bleed)
+    df_intervals$MCSD_aortic_insf[i] <- final_values %>% pull(MCSD_aortic_insf)
+    df_intervals$angina[i] <- final_values %>% pull(angina)
+    
+  } else {
+    
+    # find most recent row for the given patient in df that starts 
+    # before current interval in df_intervals, and assign values to 
+    # current interval in df_intervals
+    
+    previous_values <- df %>%
+      filter(PX_ID == PX_ID_at_index &
+               t_start <= df_intervals$interval_start[i]) %>%
+      filter(t_start == max(t_start)) %>%
+      select(all_of(vars_to_mutate))
+      
+      
+    df_intervals$systolicBP[i] <- previous_values %>% pull(systolicBP)
+    df_intervals$PCWP[i] <- previous_values %>% pull(PCWP)
+    df_intervals$central_venous_pressure[i] <- previous_values %>% pull(central_venous_pressure)
+    df_intervals$cardiac_output[i] <- previous_values %>% pull(cardiac_output)
+    df_intervals$arterial_lactate[i] <- previous_values %>% pull(arterial_lactate)
+    df_intervals$AST[i] <- previous_values %>% pull(AST)
+    df_intervals$creatinine[i] <- previous_values %>% pull(creatinine)
+    df_intervals$bilirubin[i] <- previous_values %>% pull(bilirubin)
+    df_intervals$albumin[i] <- previous_values %>% pull(albumin)
+    df_intervals$sodium[i] <- previous_values %>% pull(sodium)
+    df_intervals$BNP[i] <- previous_values %>% pull(BNP)
+    df_intervals$BNP_NT_Pro[i] <- previous_values %>% pull(BNP_NT_Pro)
+    df_intervals$heart_rate[i] <- previous_values %>% pull(heart_rate)
+    df_intervals$diastolicBP[i] <- previous_values %>% pull(diastolicBP)
+    df_intervals$PASP[i] <- previous_values %>% pull(PASP)
+    df_intervals$PADP[i] <- previous_values %>% pull(PADP)
+    df_intervals$hemoglobin[i] <- previous_values %>% pull(hemoglobin)
+    df_intervals$LDH[i] <- previous_values %>% pull(LDH)
+    df_intervals$BUN[i] <- previous_values %>% pull(BUN)
+    df_intervals$INR[i] <- previous_values %>% pull(INR)
+    df_intervals$diagnosis[i] <- previous_values %>% pull(diagnosis)
+    df_intervals$diabetes[i] <- previous_values %>% pull(diabetes)
+    df_intervals$dialysis[i] <- previous_values %>% pull(dialysis)
+    df_intervals$peripheral_vascular[i] <- previous_values %>% pull(peripheral_vascular)
+    df_intervals$status_criteria[i] <- previous_values %>% pull(status_criteria)
+    df_intervals$status[i] <- previous_values %>% pull(status)
+    df_intervals$status_initial[i] <- previous_values %>% pull(status_initial)
+    df_intervals$exception[i] <- previous_values %>% pull(exception)
+    df_intervals$dobutamine[i] <- previous_values %>% pull(dobutamine)
+    df_intervals$dopamine[i] <- previous_values %>% pull(dopamine)
+    df_intervals$epinephrine[i] <- previous_values %>% pull(epinephrine)
+    df_intervals$milrinone[i] <- previous_values %>% pull(milrinone)
+    df_intervals$IV_inotropes[i] <- previous_values %>% pull(IV_inotropes)
+    df_intervals$IABP[i] <- previous_values %>% pull(IABP)
+    df_intervals$ECMO[i] <- previous_values %>% pull(ECMO)
+    df_intervals$BiVAD[i] <- previous_values %>% pull(BiVAD)
+    df_intervals$LVAD[i] <- previous_values %>% pull(LVAD)
+    df_intervals$RVAD[i] <- previous_values %>% pull(RVAD)
+    df_intervals$MCSD_complication[i] <- previous_values %>% pull(MCSD_complication)
+    df_intervals$age[i] <- previous_values %>% pull(age)    
+    df_intervals$life_arrhythmia[i] <- previous_values %>% pull(life_arrhythmia)
+    df_intervals$BiVAD_no_discharge[i] <- previous_values %>% pull(BiVAD_no_discharge)
+    df_intervals$temp_surg_LVAD[i] <- previous_values %>% pull(temp_surg_LVAD)
+    df_intervals$other_durable_MCSD[i] <- previous_values %>% pull(other_durable_MCSD)
+    df_intervals$MCSD_malfunction[i] <- previous_values %>% pull(MCSD_malfunction)
+    df_intervals$v_tach_fib[i] <- previous_values %>% pull(v_tach_fib)
+    df_intervals$perc_LVAD[i] <- previous_values %>% pull(perc_LVAD)
+    df_intervals$MCSD_hemolysis[i] <- previous_values %>% pull(MCSD_hemolysis)
+    df_intervals$MCSD_rhf[i] <- previous_values %>% pull(MCSD_rhf)
+    df_intervals$MCSD_device_infx[i] <- previous_values %>% pull(MCSD_device_infx)
+    df_intervals$MCSD_bleed[i] <- previous_values %>% pull(MCSD_bleed)
+    df_intervals$MCSD_aortic_insf[i] <- previous_values %>% pull(MCSD_aortic_insf)
+    df_intervals$angina[i] <- previous_values %>% pull(angina)
+    
+  }
+}
+```
+
+### Clean up intervals
+```{r, warning=F, comment=NA, message=F}
 
 ## Clean up old time variables and string variables 
 df_intervals <- df_intervals %>% select(-c(t_start, t_stop, time))

@@ -1697,6 +1697,54 @@ model_final_BP_results %>%
   column_spec(1, border_right=T)
 ```
 
+### US-CRS with 2-week survival window
+
+```{r}
+
+df_intervals <- df_intervals %>% 
+  group_by(PX_ID) %>% 
+  mutate(death2week = if_else(death6week == 1 & last_group == 1, 1, 0)) %>% 
+  ungroup()
+
+model_final_2wk <- glm(formula = as.formula(
+  death2week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final_2wk_results <- as.data.frame(summary(model_final_2wk)$coefficients)
+model_final_2wk_results$name <- rownames(model_final_2wk_results)
+
+model_final_2wk_results <- model_final_2wk_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
+colnames(model_final_2wk_results) <- c('Variable', 'Estimate', 'PValue')
+rownames(model_final_2wk_results) <- seq(1:nrow(model_final_2wk_results))
+model_final_2wk_results <- model_final_2wk_results %>% 
+  mutate(Estimate = round(Estimate, 3),
+           PValue = round(PValue, 3))
+
+model_final_2wk_results$Variable <- c('Intercept',  
+                                  'Albumin', 'Log Bilirubin+1',
+                                  'eGFR', 'Sodium', 
+                                  'LVAD', 'Short MCS Ever',
+                                  'Log BNP+1, Regular BNP',
+                                  'Log BNP+1, NT-proBNP')
+
+model_final_2wk_results %>%
+  kable(align=c('c', 'c', 'c')) %>%
+  kable_styling(bootstrap_options='striped', full_width=F, position='center') %>%
+  column_spec(1, border_right=T)
+
+df_intervals_train_2wk <- df_intervals[df_intervals$train_test == 'Train',]
+
+ auc(df_intervals_train_2wk$death2week ~ predict(model_final_2wk, 
+                          newdata = df_intervals_train_2wk,
+                          type = 'response', direction = '<'))
+```
+
+
 ### US-CRS with balloon pumps and perc LVAD in short-term MCS (with hemodynamics)
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
