@@ -2,6 +2,8 @@ Code files corresponding to the manuscript *Predicting Death without Transplanta
 
 All files are written and tested using R 4.3.1.
 
+Kevin Lazenby (coauthor and collaborator) performed a reproducibility check on 10/12/2023.
+
 Scientific Registry of Transplant Recipient (SRTR) data files are required to run these files, which are restricted under a data usage agreement. A premade dataset generated from SRTR data (**status_changes_pubsaf2303.csv**) is also used; details provided at https://github.com/kevinlazenby/heart_data_pipeline.
 
 Files should be run in this order:
@@ -62,6 +64,8 @@ Updated 8/22/2023: Make additional predictions on model with hemodynamics.
 
 Updated 10/8/2023: AUC, in addition to AIC, is used for model selection. An additional set of models without BNP is added. Gender and race disparities are examined as a sensitivity analysis. Non-informative censoring is examined. An additional mixed-effects model is added. A sensitivity analysis with a different temporal split is added.
 
+Updated 10/14/2023: Code for specific thresholds of sensitivity and specificity are added.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
@@ -74,9 +78,12 @@ Updated 7/13/2023: Colors changed.
 
 Updated 8/11/2023: Accounts for NT-proBNP, new French-CRS score.
 
+Updated 8/18/2023: Name changed, updated to work with new data. Cox PH model added.
+
 Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations for US-CRS model with hemodynamics.
 
 Updated 8/25/2023: IABP, durable and perc LVAD variables added.
 
+Updated 10/14/2023: Updated notes on Harrell's c, also draws an AUC curve. Generalized c-index added.
 
-Updayed 8/18/2023: Name changed, updated to work with new data. Cox PH mode added.
+
