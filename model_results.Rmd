@@ -7,8 +7,8 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 40) -->
-<!-- 2. Set up matrices for predictions (Line 153) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 41) -->
+<!-- 2. Set up matrices for predictions (Line 154) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 609) -->
 <!-- 4. Run sensitivity logistic regression models (Line 1693) -->
 <!-- 5. Obtain machine learning model results (Line 1769) -->
@@ -17,11 +17,12 @@ authors: Kevin Zhang
 <!-- 8. Variable importance plots from gradient-boosted models (Line 1951) -->
 <!-- 9. Create calibration plot in test dataset (Line 2012) -->
 <!-- 10. Create facet plot of 50 point score at initial listing (Line 2069) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2101) -->
-<!-- 12. Check for informative censoring (Line 2259) -->
-<!-- 13. Examine a model with center random effects (Line 2295) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2312) -->
-<!-- 15. Examine model performance based on temporal split (Line 2371) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2099) -->
+<!-- 12. Check for informative censoring (Line 2257) -->
+<!-- 13. Examine a model with center random effects (Line 2292) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2310) -->
+<!-- 15. Examine model performance based on temporal split (Line 2358) -->
+<!-- 16. Coefficient plot for 2 week outcome (Line 2427) -->
 
 
 
@@ -163,8 +164,7 @@ interval_dummies_train <- predict(
   newdata = df_intervals[df_intervals$train_test == 'Train', ])
 interval_dummies_train <- as.data.frame(interval_dummies_train)
 interval_dummies_train <- interval_dummies_train %>% 
-  select(-c(diagnosisDilated_CM, `dobutamineNot High`, `dopamineNot High`, 
-            `epinephrineNot High`, `milrinoneNot High`))
+  select(-c(diagnosisDilated_CM))
 
 
 
@@ -614,7 +614,7 @@ All models are run in the training datasets.
 
 ```{r, echo=F, warning=F, comment=NA, fig.align='center'}
 model6status <- glm(formula = as.formula(
-  death6week ~ status), 
+  death6week ~ status_initial), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
   
@@ -1515,7 +1515,7 @@ df_coefplot %>%
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
-  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.25, 1.25) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.5, 1.5) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
                             'Log BNP, NT-proBNP', 
                             'Log BNP, Regular BNP', 
@@ -1954,7 +1954,7 @@ legend('bottomright', xpd = T,
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance1 <- xgb.importance(feature_names = colnames(DMat_test), model=model_xgboost_nomem)
-importance1 <- importance1[importance1$Gain > 0.03, ]
+importance1 <- importance1[importance1$Gain > 0.04, ]
 
 
 p1 <- xgb.ggplot.importance(importance1, n_clusters = 1)
@@ -1979,7 +1979,7 @@ p1 <- p1 +
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
 importance2 <- xgb.importance(feature_names = colnames(DMat_test_all), model=model_xgboost_mem)
-importance2 <- importance2[importance2$Gain > 0.03, ]
+importance2 <- importance2[importance2$Gain > 0.04, ]
 
 
 p2 <- xgb.ggplot.importance(importance1, n_clusters = 1)
@@ -2038,7 +2038,7 @@ df_intervals_test_calib <-
          upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se)
 
-
+par(xaxs='i')
 df_intervals_test_calib %>%
   ggplot(aes(x = predicted, y = observed)) +
   geom_point(aes(color = mean_uscrs)) +  
@@ -2069,8 +2069,6 @@ lm(observed ~ predicted, data = df_intervals_test_calib)
 # 10. Create facet plot of 50 point score at initial listing (Figure 3)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_intervals$uscrs_predict <- predict(model_final, newdata = df_intervals)
-
 df_intervals %>%
   filter(!is.na(status)) %>%
   group_by(PX_ID) %>%
@@ -2101,7 +2099,7 @@ df_intervals %>%
 # 11. Examine gender and race differences in prediction
 
 ```{r, echo=F, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_gender_race <- df_intervals %>% select(PX_ID, uscrs_predict, 
+df_gender_race <- df_intervals %>% select(PX_ID, interval, uscrs_predict, 
                                           uscrs_score, death6week)
 
 ### Obtain gender and race from cand_thor
@@ -2123,13 +2121,13 @@ rm(df_candthor)
 df_gender_race <- subset(df_gender_race, !is.na(df_gender_race$uscrs_predict))
 
 
-df_gender_race %>% ungroup() %>%
+df_gender_race %>% ungroup() %>% filter(interval==1) %>%
   tbl_summary(by = female, 
               include = c('uscrs_predict', 'uscrs_score', 'death6week'),
               digits = everything() ~ 5) %>%
   add_p()
 
-df_gender_race %>% ungroup() %>%
+df_gender_race %>% ungroup() %>% filter(interval==1) %>%
   tbl_summary(by = race, 
               include = c('uscrs_predict', 'uscrs_score', 'death6week'),
               digits = everything() ~ 5) %>%
@@ -2312,55 +2310,44 @@ model_mixed <- glmer(formula = as.formula(
 # 14. Examine sensitivity and specificity at certain cut points
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
-sixstatus_auc <- roc(data=df_intervals_test, 
-                     response=death6week, 
+sixstatus_auc <- roc(data=df_intervals_test,
+                     response=death6week,
                      predictor=status_initial, direction='>', quiet=T)
 french_auc <- roc(df_intervals_test_model_french_new$death6week ~ model_french_new_predict, direction='<')
 us_auc <- roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<')
 
-coords(sixstatus_auc, x='best', input='threshold')
-coords(french_auc, x='best', input='threshold')
-coords(us_auc, x='best', input='threshold')
 
-ci.coords(sixstatus_auc, x=0.9, input='specificity')
-ci.coords(french_auc, x=0.9, input='specificity')
-ci.coords(us_auc, x=0.9, input='specificity')
+pROC::coords(sixstatus_auc, x=1, input='threshold')
+pROC::coords(sixstatus_auc, x=2, input='threshold')
+pROC::coords(sixstatus_auc, x=3, input='threshold')
+pROC::coords(sixstatus_auc, x=4, input='threshold')
+pROC::coords(sixstatus_auc, x=5, input='threshold')
+pROC::coords(sixstatus_auc, x=6, input='threshold')
 
-ci.coords(sixstatus_auc, x=0.9, input='sensitivity')
-ci.coords(french_auc, x=0.9, input='sensitivity')
-ci.coords(us_auc, x=0.9, input='sensitivity')
+pROC::coords(french_auc, x=0.080, input='sensitivity')
+pROC::coords(french_auc, x=0.284, input='sensitivity')
+pROC::coords(french_auc, x=0.363, input='sensitivity')
+pROC::coords(french_auc, x=0.805, input='sensitivity')
+pROC::coords(french_auc, x=0.839, input='sensitivity')
 
-coords(sixstatus_auc, x=0.6, input='sensitivity')
-coords(sixstatus_auc, x=0.7, input='sensitivity')
-coords(sixstatus_auc, x=0.8, input='sensitivity')
-coords(sixstatus_auc, x=0.9, input='sensitivity')
-coords(sixstatus_auc, x=0.95, input='sensitivity')
-coords(french_auc, x=0.6, input='sensitivity')
-coords(french_auc, x=0.7, input='sensitivity')
-coords(french_auc, x=0.8, input='sensitivity')
-coords(french_auc, x=0.9, input='sensitivity')
-coords(french_auc, x=0.95, input='sensitivity')
-coords(us_auc, x=0.6, input='sensitivity')
-coords(us_auc, x=0.7, input='sensitivity')
-coords(us_auc, x=0.8, input='sensitivity')
-coords(us_auc, x=0.9, input='sensitivity')
-coords(us_auc, x=0.95, input='sensitivity')
+pROC::coords(french_auc, x=0.990, input='specificity')
+pROC::coords(french_auc, x=0.923, input='specificity')
+pROC::coords(french_auc, x=0.861, input='specificity')
+pROC::coords(french_auc, x=0.304, input='specificity')
+pROC::coords(french_auc, x=0.263, input='specificity')
 
-coords(sixstatus_auc, x=0.6, input='specificity')
-coords(sixstatus_auc, x=0.7, input='specificity')
-coords(sixstatus_auc, x=0.8, input='specificity')
-coords(sixstatus_auc, x=0.9, input='specificity')
-coords(sixstatus_auc, x=0.95, input='specificity')
-coords(french_auc, x=0.6, input='specificity')
-coords(french_auc, x=0.7, input='specificity')
-coords(french_auc, x=0.8, input='specificity')
-coords(french_auc, x=0.9, input='specificity')
-coords(french_auc, x=0.95, input='specificity')
-coords(us_auc, x=0.6, input='specificity')
-coords(us_auc, x=0.7, input='specificity')
-coords(us_auc, x=0.8, input='specificity')
-coords(us_auc, x=0.9, input='specificity')
-coords(us_auc, x=0.95, input='specificity')
+
+pROC::coords(us_auc, x=0.080, input='sensitivity')
+pROC::coords(us_auc, x=0.284, input='sensitivity')
+pROC::coords(us_auc, x=0.363, input='sensitivity')
+pROC::coords(us_auc, x=0.805, input='sensitivity')
+pROC::coords(us_auc, x=0.839, input='sensitivity')
+
+pROC::coords(us_auc, x=0.990, input='specificity')
+pROC::coords(us_auc, x=0.923, input='specificity')
+pROC::coords(us_auc, x=0.861, input='specificity')
+pROC::coords(us_auc, x=0.304, input='specificity')
+pROC::coords(us_auc, x=0.263, input='specificity')
 ```
 
 
@@ -2430,4 +2417,121 @@ result; ci.auc(result)
 result <- auc(df_intervals_test_model_final_temporal$death6week ~ model_final_temporal_predict, 
               direction='<')
 result; ci.auc(result)
+```
+
+
+
+-------------
+
+
+# 16. Coefficient plot for 2 week outcome
+
+```{r, echo=F, warning=F, message=F, comment=NA}
+df_coefplot <- data.frame(
+  'var' = c('Short-Term MCS', 'Short-Term MCS', 'Log Bilirubin', 'Log Bilirubin',
+            'eGFR', 'eGFR', 'Log BNP, Regular BNP', 'Log BNP, Regular BNP',
+            'Log BNP, NT-proBNP', 'Log BNP, NT-proBNP', 'Albumin', 'Albumin',
+            'Sodium', 'Sodium', 'Durable LVAD', 'Durable LVAD'),
+  
+  'model' = c(rep(c('2', '6'), 8)),
+  
+  'est' = NA,
+  
+  'stderr' = NA)
+
+df_coefplot$est[df_coefplot$var == 'Albumin' & df_coefplot$model == '2'] <- -0.774396
+df_coefplot$stderr[df_coefplot$var == 'Albumin' & df_coefplot$model == '2'] <- 0.059960
+df_coefplot$est[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '2'] <- 0.667732
+df_coefplot$stderr[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '2'] <- 0.096074
+df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- -0.011208
+df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 0.001561
+df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- -0.086470
+df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 0.009662
+df_coefplot$est[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '2'] <- -0.393763
+df_coefplot$stderr[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '2'] <- 0.104724
+df_coefplot$est[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '2'] <- 1.227926
+df_coefplot$stderr[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '2'] <- 0.197645
+df_coefplot$est[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '2'] <- 0.464056
+df_coefplot$stderr[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '2'] <- 0.051574
+df_coefplot$est[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '2'] <- 0.239965
+df_coefplot$stderr[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '2'] <- 0.033546
+
+
+df_coefplot$est[df_coefplot$var == 'Albumin' & df_coefplot$model == '6'] <- -0.6611378
+df_coefplot$stderr[df_coefplot$var == 'Albumin' & df_coefplot$model == '6'] <- 0.0358904
+df_coefplot$est[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '6'] <- 0.6188804
+df_coefplot$stderr[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '6'] <- 0.0611198
+df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- -0.0122161
+df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 0.0009163
+df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- -0.0762762 
+df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 0.0057679
+df_coefplot$est[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '6'] <- -0.3698616
+df_coefplot$stderr[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '6'] <- 0.0588071
+df_coefplot$est[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '6'] <- 1.0286849
+df_coefplot$stderr[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '6'] <- 0.1373539
+df_coefplot$est[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '6'] <- 0.4289972
+df_coefplot$stderr[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '6'] <- 0.0303136
+df_coefplot$est[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '6'] <- 0.2232971
+df_coefplot$stderr[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '6'] <- 0.0193497
+
+
+df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 
+  df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] * 10
+df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 
+  df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] * 10
+df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 
+  df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] * 10
+df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 
+  df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] * 10
+
+df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 
+  df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] * 10
+df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 
+  df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] * 10
+df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 
+  df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] * 10
+df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 
+  df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] * 10
+
+
+
+df_coefplot <- df_coefplot %>%
+  mutate(
+    lower = est - (1.96*stderr),
+    upper = est + (1.96*stderr)) %>%
+  select(-c(stderr))
+
+
+# dev.new(width = 7,height = 6, noRStudioGD = T)
+df_coefplot %>%
+  ggplot(aes(x=est, 
+             y=factor(var, levels = c('Durable LVAD', 'Sodium', 
+                                      'Albumin', 
+                                      'Log BNP, NT-proBNP',
+                                      'Log BNP, Regular BNP',
+                                      'eGFR', 'Log Bilirubin', 
+                                      'Short-Term MCS')), 
+             color=model)) +
+  geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
+  geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.75, 1.75) +
+  scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
+                            'Log BNP, NT-proBNP', 
+                            'Log BNP, Regular BNP', 
+                            expression('eGFR'^'b'), 'Log Bilirubin', 
+                            expression('Short-Term MCS'^'a'))) +
+  scale_colour_manual(name='Model',
+                      breaks = c('6', '2'),
+                      values = c('#880d1e', '#3f88c5'), 
+                      labels = c('6-Week', '2-Week')) + 
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
+        axis.text.x = element_text(face='bold', size = 16, margin = margin(t=5)), 
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(face='bold', size = 16, margin = margin(r=5)),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 18)) 
 ```
