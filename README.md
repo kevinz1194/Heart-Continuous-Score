@@ -74,6 +74,8 @@ Updated 10/14/2023: Code for specific thresholds of sensitivity and specificity 
 
 Updated 10/15/2023: Minor change to legend of AUC curves.
 
+Updated 10/22/2023: Sensitivity and specificity code revised.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
