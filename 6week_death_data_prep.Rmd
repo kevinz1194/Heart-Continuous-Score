@@ -19,9 +19,9 @@ authors: Kevin Zhang, Kevin Lazenby, and William Parker
 <!-- 8. Death in 6 weeks (Line 1338) -->
 <!-- 9. Count missingness (Line 1373) -->
 <!-- 10. Impute variables (Line 1447) -->
-<!-- 11. Generate new clinical variables (Line 1594) -->
-<!-- 12. Histograms of variables (Line 1643) -->
-<!-- 13. Sample checks between blocked and unblocked (Line 1725) -->
+<!-- 11. Generate new clinical variables (Line 1598) -->
+<!-- 12. Histograms of variables (Line 1647) -->
+<!-- 13. Sample checks between blocked and unblocked (Line 1729) -->
 
 
 
@@ -1453,6 +1453,8 @@ df_missing <- df_missing %>%
 * Hemoglobin: 14.9 g/dL for males, 13.3 g/dL for females
 * BNP: median based on BNP type
 * Sodium: median
+* Albumin: median
+* Bilirubin: median
 * eGFR: 100 mL/min/1.73m^2
 * Cardiac output: 2.5 x bsa if LVAD, 2.2 x bsa else
 * CVP: 10 mm Hg if LVAD, 12 else
@@ -1475,6 +1477,8 @@ df_intervals$BNP[is.na(df_intervals$BNP) & df_intervals$BNP_NT_Pro == '1'] <-
 
 
 df_intervals$sodium[is.na(df_intervals$sodium)] <- median(df_intervals$sodium, na.rm=T)
+df_intervals$albumin[is.na(df_intervals$albumin)] <- median(df_intervals$albumin, na.rm=T)
+df_intervals$bilirubin[is.na(df_intervals$bilirubin)] <- median(df_intervals$bilirubin, na.rm=T)
 ```
 
 ```{r, warning=F, comment=NA, message=F}
