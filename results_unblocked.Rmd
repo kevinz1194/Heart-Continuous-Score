@@ -103,7 +103,7 @@ Includes these initial variables at listing:
 - Percutaneous VAD
 
 
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+```{r, warning=F, comment=NA, fig.align='center'}
 df_table1 <- df %>%
   select(PX_ID, train_test, status, age, albumin,
          bilirubin, creatinine, sodium, BNP, BNP_NT_Pro,
@@ -270,7 +270,7 @@ df_table1 %>%
 
 # 3. Find missing % at listing
 
-```{r, echo=F, warning=F, comment=NA, fig.align='center'}
+```{r, warning=F, comment=NA, fig.align='center'}
 df_missings <- df %>%
   select(PX_ID, BNP, sodium, bilirubin, albumin, cardiac_output,
          central_venous_pressure, PASP, PADP, 
@@ -412,7 +412,7 @@ df <- df %>%
 
 ### ROC curve for subset of models (Figure 2)
 
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
 load('./model_frenchCRS_new.RData')
 load('./model_USCRS.RData')
 
@@ -461,7 +461,7 @@ legend('bottomright', xpd = T,
 
 ## Boxplot of predicted risk by status (eFigure 3)
 
-```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
+```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_boxplot <- subset(df_model_us, !is.na(df_model_us$status))
 
 
@@ -488,7 +488,7 @@ df_boxplot %>%
 
 # 7. Cox PH with US-CRS predictors on unblocked and generalized c-index
 
-```{r, warning=F, echo=F, message=F, comment=NA}
+```{r, warning=F, message=F, comment=NA}
 pacman::p_load(risksetROC)
 df$BNP_NT_Pro <- as.factor(df$BNP_NT_Pro)
 
