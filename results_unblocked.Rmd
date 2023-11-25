@@ -539,7 +539,7 @@ roc_french <- risksetROC::risksetAUC(Stime = survival.time_french, status = surv
                        marker = eta_french, method = 'Cox', tmax = max(survival.time_french), plot=F)
 roc_us <- risksetROC::risksetAUC(Stime = survival.time_us, status = survival.status_us,
                        marker = eta_us, method = 'Cox', tmax = max(survival.time_us), plot=F)
-roc_6 <- risksetROC::risksetAUC(Stime = survival.time6, status = survival.status_6,
+roc_6 <- risksetROC::risksetAUC(Stime = survival.time_6, status = survival.status_6,
                        marker = eta_6, method = 'Cox', tmax = max(survival.time_6), plot=F)
 
 
