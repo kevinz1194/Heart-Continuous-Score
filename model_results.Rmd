@@ -7,22 +7,21 @@ output:
 authors: Kevin Zhang
 ---
 
-<!-- 1. Set up dataset with generated cardiac variables (Line 41) -->
-<!-- 2. Set up matrices for predictions (Line 154) -->
-<!-- 3. Run selected logistic regression models and create coefficient plots (Line 609) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1693) -->
-<!-- 5. Obtain machine learning model results (Line 1769) -->
-<!-- 6. Make predictions on test dataset (Line 1831) -->
-<!-- 7. Create AUC curves (Line 1892) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 1951) -->
-<!-- 9. Create calibration plot in test dataset (Line 2012) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2069) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2099) -->
-<!-- 12. Check for informative censoring (Line 2257) -->
-<!-- 13. Examine a model with center random effects (Line 2292) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2310) -->
-<!-- 15. Examine model performance based on temporal split (Line 2358) -->
-<!-- 16. Coefficient plot for 2 week outcome (Line 2427) -->
+<!-- 1. Set up dataset with generated cardiac variables (Line 42) -->
+<!-- 2. Set up matrices for predictions (Line 155) -->
+<!-- 3. Run selected logistic regression models and create coefficient plots (Line 614) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1698) -->
+<!-- 5. Obtain machine learning model results (Line 1776) -->
+<!-- 6. Make predictions on test dataset (Line 1838) -->
+<!-- 7. Create AUC curves (Line 1899) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 1959) -->
+<!-- 9. Create calibration plot in test dataset (Line 2020) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2077) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2107) -->
+<!-- 12. Check for informative censoring (Line 2265) -->
+<!-- 13. Examine sensitivity and specificity at certain cut points (Line 2299) -->
+<!-- 14. Examine model performance based on temporal split (Line 2346) -->
+<!-- 15. Coefficient plot for 2 week outcome (Line 2414) -->
 
 
 
@@ -30,7 +29,9 @@ authors: Kevin Zhang
 rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
-pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, pROC, xgboost, survival, DescTools, cowplot, lme4)
+pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
+               pROC, xgboost, survival, DescTools, cowplot, lme4,  
+               lmtest, sandwich)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -163,9 +164,7 @@ interval_dummies_train <- predict(
                    fullrank = T), 
   newdata = df_intervals[df_intervals$train_test == 'Train', ])
 interval_dummies_train <- as.data.frame(interval_dummies_train)
-interval_dummies_train <- interval_dummies_train %>% 
-  select(-c(diagnosisDilated_CM))
-
+interval_dummies_train <- interval_dummies_train %>% select(-c(diagnosisDilated_CM))
 
 
 mat_train <- data.frame(cbind(
@@ -603,6 +602,12 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
 ```
 
 
+
+# Change missing center ID to 0
+```{r, warning=F, comment=NA}
+df_intervals$CenterId[is.na(df_intervals$CenterId)] <- '0'
+```
+
 -------------
 
 
@@ -637,7 +642,7 @@ model_french_old <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_french_old_results <- as.data.frame(summary(model_french_old)$coefficients)
+model_french_old_results <- as.data.frame(lmtest::coeftest(model_french_old, vcov=vcovCL, cluster=~CenterId)[,])
 model_french_old_results$name <- rownames(model_french_old_results)
 
 model_french_old_results <- model_french_old_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -669,7 +674,7 @@ model_french_new <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_french_new_results <- as.data.frame(summary(model_french_new)$coefficients)
+model_french_new_results <- as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])
 model_french_new_results$name <- rownames(model_french_new_results)
 
 model_french_new_results <- model_french_new_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -713,7 +718,7 @@ model_PCWP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_PCWP_results <- as.data.frame(summary(model_PCWP)$coefficients)
+model_PCWP_results <- as.data.frame(lmtest::coeftest(model_PCWP, vcov=vcovCL, cluster=~CenterId)[,])
 model_PCWP_results$name <- rownames(model_PCWP_results)
 
 model_PCWP_results <- model_PCWP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -773,7 +778,7 @@ model_CPO_API <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_CPO_API_results <- as.data.frame(summary(model_CPO_API)$coefficients)
+model_CPO_API_results <- as.data.frame(lmtest::coeftest(model_CPO_API, vcov=vcovCL, cluster=~CenterId)[,])
 model_CPO_API_results$name <- rownames(model_CPO_API_results)
 
 model_CPO_API_results <- model_CPO_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -816,7 +821,7 @@ model_CPO <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_CPO_results <- as.data.frame(summary(model_CPO)$coefficients)
+model_CPO_results <- as.data.frame(lmtest::coeftest(model_CPO, vcov=vcovCL, cluster=~CenterId)[,])
 model_CPO_results$name <- rownames(model_CPO_results)
 
 model_CPO_results <- model_CPO_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -865,7 +870,7 @@ model_API <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_API_results <- as.data.frame(summary(model_API)$coefficients)
+model_API_results <- as.data.frame(lmtest::coeftest(model_API, vcov=vcovCL, cluster=~CenterId)[,])
 model_API_results$name <- rownames(model_API_results)
 
 model_API_results <- model_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -926,7 +931,7 @@ model_PAPI_CPO <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_PAPI_CPO_results <- as.data.frame(summary(model_PAPI_CPO)$coefficients)
+model_PAPI_CPO_results <- as.data.frame(lmtest::coeftest(model_PAPI_CPO, vcov=vcovCL, cluster=~CenterId)[,])
 model_PAPI_CPO_results$name <- rownames(model_PAPI_CPO_results)
 
 model_PAPI_CPO_results <- model_PAPI_CPO_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -984,7 +989,7 @@ model_PAPI <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_PAPI_results <- as.data.frame(summary(model_PAPI)$coefficients)
+model_PAPI_results <- as.data.frame(lmtest::coeftest(model_PAPI, vcov=vcovCL, cluster=~CenterId)[,])
 model_PAPI_results$name <- rownames(model_PAPI_results)
 
 model_PAPI_results <- model_PAPI_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1028,7 +1033,7 @@ model_CPO_PAPI_AST_API <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_CPO_PAPI_AST_API_results <- as.data.frame(summary(model_CPO_PAPI_AST_API)$coefficients)
+model_CPO_PAPI_AST_API_results <- as.data.frame(lmtest::coeftest(model_CPO_PAPI_AST_API, vcov=vcovCL, cluster=~CenterId)[,])
 model_CPO_PAPI_AST_API_results$name <- rownames(model_CPO_PAPI_AST_API_results)
 
 model_CPO_PAPI_AST_API_results <- model_CPO_PAPI_AST_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1072,7 +1077,7 @@ model_CPO_PAPI_API <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_CPO_PAPI_API_results <- as.data.frame(summary(model_CPO_PAPI_API)$coefficients)
+model_CPO_PAPI_API_results <- as.data.frame(lmtest::coeftest(model_CPO_PAPI_API, vcov=vcovCL, cluster=~CenterId)[,])
 model_CPO_PAPI_API_results$name <- rownames(model_CPO_PAPI_API_results)
 
 model_CPO_PAPI_API_results <- model_CPO_PAPI_API_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1117,7 +1122,7 @@ model_CPO_PAPI_AST <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_CPO_PAPI_AST_results <- as.data.frame(summary(model_CPO_PAPI_AST)$coefficients)
+model_CPO_PAPI_AST_results <- as.data.frame(lmtest::coeftest(model_CPO_PAPI_AST, vcov=vcovCL, cluster=~CenterId)[,])
 model_CPO_PAPI_AST_results$name <- rownames(model_CPO_PAPI_AST_results)
 
 model_CPO_PAPI_AST_results <- model_CPO_PAPI_AST_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1163,7 +1168,7 @@ model_no_hemo <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_no_hemo_results <- as.data.frame(summary(model_no_hemo)$coefficients)
+model_no_hemo_results <- as.data.frame(lmtest::coeftest(model_no_hemo, vcov=vcovCL, cluster=~CenterId)[,])
 model_no_hemo_results$name <- rownames(model_no_hemo_results)
 
 model_no_hemo_results <- model_no_hemo_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1272,9 +1277,7 @@ model_comparison <- data.frame(
                   predict(model_CPO_PAPI_AST_noBNP, 
                           newdata = df_intervals_train, type = 'response', direction = '<')),
             auc(df_intervals_train$death6week ~ 
-                  predict(model_no_hemo_noBNP, newdata = df_intervals_train, type = 'response', direction = '<'))
-            
-            ),
+                  predict(model_no_hemo_noBNP, newdata = df_intervals_train, type = 'response', direction = '<'))),
   
   'AIC' = c(AIC(model_french_old), 
             AIC(model_french_new), 
@@ -1323,7 +1326,7 @@ model_final <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_final_results <- as.data.frame(summary(model_final)$coefficients)
+model_final_results <- as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~CenterId)[,])
 model_final_results$name <- rownames(model_final_results)
 
 model_final_results <- model_final_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1362,7 +1365,7 @@ model_final_hemo <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_final_hemo_results <- as.data.frame(summary(model_final_hemo)$coefficients)
+model_final_hemo_results <- as.data.frame(lmtest::coeftest(model_final_hemo, vcov=vcovCL, cluster=~CenterId)[,])
 model_final_hemo_results$name <- rownames(model_final_hemo_results)
 
 model_final_hemo_results <- model_final_hemo_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1395,7 +1398,8 @@ save(model_final_hemo, file = './model_USCRS_hemo.RData')
 ### Coefficient plot of results without hemodynamics (Figure 1)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_coefplot <- as.data.frame(summary(model_final)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot <- as.data.frame(
+  lmtest::coeftest(model_final, vcov=vcovCL, cluster=~CenterId)[,])[ ,c('Estimate', 'Std. Error')]
 df_coefplot$var <- rownames(df_coefplot)
 rownames(df_coefplot) <- NULL
 colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
@@ -1515,7 +1519,7 @@ df_coefplot %>%
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
-  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.5, 1.5) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.75, 1.75) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
                             'Log BNP, NT-proBNP', 
                             'Log BNP, Regular BNP', 
@@ -1540,7 +1544,8 @@ df_coefplot %>%
 ### Coefficient plot of results with CPO and PAPi 
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_coefplot <- as.data.frame(summary(model_final_hemo)$coefficients)[ ,c('Estimate', 'Std. Error')]
+df_coefplot <- as.data.frame(
+  lmtest::coeftest(model_final_hemo, vcov=vcovCL, cluster=~CenterId)[,])[ ,c('Estimate', 'Std. Error')]
 df_coefplot$var <- rownames(df_coefplot)
 rownames(df_coefplot) <- NULL
 colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
@@ -1704,7 +1709,8 @@ model_final_BP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_final_BP_results <- as.data.frame(summary(model_final_BP)$coefficients)
+model_final_BP_results <- as.data.frame(
+  lmtest::coeftest(model_final_BP, vcov=vcovCL, cluster=~CenterId)[,])[ ,c('Estimate', 'Pr(>|z|)')]
 model_final_BP_results$name <- rownames(model_final_BP_results)
 
 model_final_BP_results <- model_final_BP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1739,7 +1745,8 @@ model_hemo_BP <- glm(formula = as.formula(
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
-model_hemo_BP_results <- as.data.frame(summary(model_hemo_BP)$coefficients)
+model_hemo_BP_results <- as.data.frame(
+  lmtest::coeftest(model_hemo_BP, vcov=vcovCL, cluster=~CenterId)[,])[ ,c('Estimate', 'Pr(>|z|)')]
 model_hemo_BP_results$name <- rownames(model_hemo_BP_results)
 
 model_hemo_BP_results <- model_hemo_BP_results[ ,c('name', 'Estimate', 'Pr(>|z|)')]
@@ -1918,6 +1925,7 @@ legend('bottomright', cex = 0.9, xpd = T,
                  'US-CRS'),
        col = c('#880d1e', 'wheat3', '#a37c40', '#07090f', '#3f88c5'), lwd = 2.5)
 ```
+
 
 
 ### ROC curve for subset of models (Figure 2)
@@ -2285,29 +2293,10 @@ df_censor %>%
 ```
 
 
-
 -------------
 
 
-# 13. Examine a model with center random effects
-
-```{r, echo=F, warning=F, message=F, comment=NA}
-model_mixed <- glmer(formula = as.formula(
-  death6week ~ 
-    albumin + log(bilirubin + 1) + 
-    eGFR + sodium + 
-    (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever + (1 | CenterId)), 
-  data = df_intervals[df_intervals$train_test == 'Train',],
-  family = binomial)
-```
-
-
-
--------------
-
-
-# 14. Examine sensitivity and specificity at certain cut points
+# 13. Examine sensitivity and specificity at certain cut points
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
 sixstatus_auc <- roc(data=df_intervals_test,
@@ -2317,45 +2306,44 @@ french_auc <- roc(df_intervals_test_model_french_new$death6week ~ model_french_n
 us_auc <- roc(df_intervals_test_model_final$death6week ~ model_final_predict, direction='<')
 
 
-pROC::coords(sixstatus_auc, x=1, input='threshold')
-pROC::coords(sixstatus_auc, x=2, input='threshold')
-pROC::coords(sixstatus_auc, x=3, input='threshold')
-pROC::coords(sixstatus_auc, x=4, input='threshold')
-pROC::coords(sixstatus_auc, x=5, input='threshold')
-pROC::coords(sixstatus_auc, x=6, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=1, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=2, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=3, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=4, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=5, input='threshold')
+pROC::ci.coords(sixstatus_auc, x=6, input='threshold')
 
-pROC::coords(french_auc, x=0.080, input='sensitivity')
-pROC::coords(french_auc, x=0.284, input='sensitivity')
-pROC::coords(french_auc, x=0.363, input='sensitivity')
-pROC::coords(french_auc, x=0.805, input='sensitivity')
-pROC::coords(french_auc, x=0.839, input='sensitivity')
+pROC::ci.coords(french_auc, x=0.080, input='sensitivity')
+pROC::ci.coords(french_auc, x=0.284, input='sensitivity')
+pROC::ci.coords(french_auc, x=0.363, input='sensitivity')
+pROC::ci.coords(french_auc, x=0.805, input='sensitivity')
+pROC::ci.coords(french_auc, x=0.839, input='sensitivity')
 
-pROC::coords(french_auc, x=0.990, input='specificity')
-pROC::coords(french_auc, x=0.923, input='specificity')
-pROC::coords(french_auc, x=0.861, input='specificity')
-pROC::coords(french_auc, x=0.304, input='specificity')
-pROC::coords(french_auc, x=0.263, input='specificity')
+pROC::ci.coords(french_auc, x=0.990, input='specificity')
+pROC::ci.coords(french_auc, x=0.923, input='specificity')
+pROC::ci.coords(french_auc, x=0.861, input='specificity')
+pROC::ci.coords(french_auc, x=0.304, input='specificity')
+pROC::ci.coords(french_auc, x=0.263, input='specificity')
 
 
-pROC::coords(us_auc, x=0.080, input='sensitivity')
-pROC::coords(us_auc, x=0.284, input='sensitivity')
-pROC::coords(us_auc, x=0.363, input='sensitivity')
-pROC::coords(us_auc, x=0.805, input='sensitivity')
-pROC::coords(us_auc, x=0.839, input='sensitivity')
+pROC::ci.coords(us_auc, x=0.080, input='sensitivity')
+pROC::ci.coords(us_auc, x=0.284, input='sensitivity')
+pROC::ci.coords(us_auc, x=0.363, input='sensitivity')
+pROC::ci.coords(us_auc, x=0.805, input='sensitivity')
+pROC::ci.coords(us_auc, x=0.839, input='sensitivity')
 
-pROC::coords(us_auc, x=0.990, input='specificity')
-pROC::coords(us_auc, x=0.923, input='specificity')
-pROC::coords(us_auc, x=0.861, input='specificity')
-pROC::coords(us_auc, x=0.304, input='specificity')
-pROC::coords(us_auc, x=0.263, input='specificity')
+pROC::ci.coords(us_auc, x=0.990, input='specificity')
+pROC::ci.coords(us_auc, x=0.923, input='specificity')
+pROC::ci.coords(us_auc, x=0.861, input='specificity')
+pROC::ci.coords(us_auc, x=0.304, input='specificity')
+pROC::ci.coords(us_auc, x=0.263, input='specificity')
 ```
-
 
 
 -------------
 
 
-# 15. Examine model performance based on temporal split
+# 14. Examine model performance based on temporal split
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
 df_intervals$train_test <- 'Train'
@@ -2420,11 +2408,10 @@ result; ci.auc(result)
 ```
 
 
-
 -------------
 
 
-# 16. Coefficient plot for 2 week outcome
+# 15. Coefficient plot for 2 week outcome
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
 df_coefplot <- data.frame(
