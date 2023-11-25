@@ -1423,16 +1423,16 @@ df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <-
 
 
 df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
-  summary(model_french_new)$coefficients['short_MCS_French_new', 'Std. Error']
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['short_MCS_French_new','Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Std. Error']
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(bilirubin + 1)','Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- 
-  summary(model_french_new)$coefficients['eGFR', 'Std. Error']
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['eGFR','Std. Error']
 
 df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
-  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Std. Error']
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(BNP + 1):BNP_NT_Pro0','Std. Error']
 df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
-  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Std. Error']
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(BNP + 1):BNP_NT_Pro1','Std. Error']
 
 
 df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
@@ -2414,81 +2414,158 @@ result; ci.auc(result)
 
 # 15. Coefficient plot for 2 week outcome
 
+## Create 2 week death variable
+```{r, warning=F, message=F, comment=NA}
+## General death flag (non-last group)
+death_ids <- unique(df_intervals$PX_ID[df_intervals$death6week == '1'])
+df_intervals$death_flag <- 0
+df_intervals$death_flag[which(df_intervals$PX_ID %in% death_ids)] <- 1
+
+## Death within 2 weeks
+df_intervals$interval_stop <- as.numeric(df_intervals$interval_stop)
+df_intervals <- df_intervals %>%
+  group_by(PX_ID) %>%
+  mutate(death_time = max(interval_stop))
+
+df_intervals$death2week <- 0
+df_intervals$deathdifference <- (as.numeric(df_intervals$death_time) - 
+                                   as.numeric(df_intervals$interval_stop))
+df_intervals$death2week[df_intervals$death_flag == '1' & df_intervals$deathdifference <= 14] <- 1
+
+## If transplanted, no death within 2 weeks in any interval
+df_intervals$death2week[df_intervals$transplant == '1'] <- '0'
+df_intervals$death2week <- as.numeric(df_intervals$death2week)
+```
+
+
+## Run models
+```{r, warning=F, message=F, comment=NA}
+model_french_new <- glm(formula = as.formula(
+  death2week ~ 
+    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+model_final <- glm(formula = as.formula(
+  death2week ~ 
+    albumin + log(bilirubin + 1) + 
+    eGFR + sodium + 
+    (log(BNP + 1):BNP_NT_Pro) + 
+    LVAD + short_MCS_ever), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+```
+
+
+
 ```{r, echo=F, warning=F, message=F, comment=NA}
-df_coefplot <- data.frame(
-  'var' = c('Short-Term MCS', 'Short-Term MCS', 'Log Bilirubin', 'Log Bilirubin',
-            'eGFR', 'eGFR', 'Log BNP, Regular BNP', 'Log BNP, Regular BNP',
-            'Log BNP, NT-proBNP', 'Log BNP, NT-proBNP', 'Albumin', 'Albumin',
-            'Sodium', 'Sodium', 'Durable LVAD', 'Durable LVAD'),
-  
-  'model' = c(rep(c('2', '6'), 8)),
-  
-  'est' = NA,
-  
-  'stderr' = NA)
+df_coefplot <- as.data.frame(
+  lmtest::coeftest(model_final, vcov=vcovCL, cluster=~CenterId)[,])[ ,c('Estimate', 'Std. Error')]
+df_coefplot$var <- rownames(df_coefplot)
+rownames(df_coefplot) <- NULL
+colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
 
-df_coefplot$est[df_coefplot$var == 'Albumin' & df_coefplot$model == '2'] <- -0.774396
-df_coefplot$stderr[df_coefplot$var == 'Albumin' & df_coefplot$model == '2'] <- 0.059960
-df_coefplot$est[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '2'] <- 0.667732
-df_coefplot$stderr[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '2'] <- 0.096074
-df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- -0.011208
-df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 0.001561
-df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- -0.086470
-df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 0.009662
-df_coefplot$est[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '2'] <- -0.393763
-df_coefplot$stderr[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '2'] <- 0.104724
-df_coefplot$est[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '2'] <- 1.227926
-df_coefplot$stderr[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '2'] <- 0.197645
-df_coefplot$est[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '2'] <- 0.464056
-df_coefplot$stderr[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '2'] <- 0.051574
-df_coefplot$est[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '2'] <- 0.239965
-df_coefplot$stderr[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '2'] <- 0.033546
+df_coefplot$french_est <- NA
+df_coefplot$french_stderr <- NA
+
+df_coefplot$french_est[df_coefplot$var == 'short_MCS_ever'] <- 
+  summary(model_french_new)$coefficients['short_MCS_French_new', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  summary(model_french_new)$coefficients['log(bilirubin + 1)', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- 
+  summary(model_french_new)$coefficients['eGFR', 'Estimate']
 
 
-df_coefplot$est[df_coefplot$var == 'Albumin' & df_coefplot$model == '6'] <- -0.6611378
-df_coefplot$stderr[df_coefplot$var == 'Albumin' & df_coefplot$model == '6'] <- 0.0358904
-df_coefplot$est[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '6'] <- 0.6188804
-df_coefplot$stderr[df_coefplot$var == 'Log Bilirubin' & df_coefplot$model == '6'] <- 0.0611198
-df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- -0.0122161
-df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 0.0009163
-df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- -0.0762762 
-df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 0.0057679
-df_coefplot$est[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '6'] <- -0.3698616
-df_coefplot$stderr[df_coefplot$var == 'Durable LVAD' & df_coefplot$model == '6'] <- 0.0588071
-df_coefplot$est[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '6'] <- 1.0286849
-df_coefplot$stderr[df_coefplot$var == 'Short-Term MCS' & df_coefplot$model == '6'] <- 0.1373539
-df_coefplot$est[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '6'] <- 0.4289972
-df_coefplot$stderr[df_coefplot$var == 'Log BNP, Regular BNP' & df_coefplot$model == '6'] <- 0.0303136
-df_coefplot$est[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '6'] <- 0.2232971
-df_coefplot$stderr[df_coefplot$var == 'Log BNP, NT-proBNP' & df_coefplot$model == '6'] <- 0.0193497
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Estimate']
+df_coefplot$french_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  summary(model_french_new)$coefficients['log(BNP + 1):BNP_NT_Pro1', 'Estimate']
 
 
-df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 
-  df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] * 10
-df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 
-  df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] * 10
-df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] <- 
-  df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '2'] * 10
-df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] <- 
-  df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '2'] * 10
 
-df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 
-  df_coefplot$est[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] * 10
-df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 
-  df_coefplot$est[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] * 10
-df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] <- 
-  df_coefplot$stderr[df_coefplot$var == 'eGFR' & df_coefplot$model == '6'] * 10
-df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] <- 
-  df_coefplot$stderr[df_coefplot$var == 'Sodium' & df_coefplot$model == '6'] * 10
+df_coefplot$french_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['short_MCS_French_new','Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(bilirubin + 1)','Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- 
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['eGFR','Std. Error']
+
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(BNP + 1):BNP_NT_Pro0','Std. Error']
+df_coefplot$french_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
+  as.data.frame(lmtest::coeftest(model_french_new, vcov=vcovCL, cluster=~CenterId)[,])['log(BNP + 1):BNP_NT_Pro1','Std. Error']
+
+
+df_coefplot <- df_coefplot[ ,c('var', 'french_est', 'french_stderr', 'us_est', 'us_stderr')]
+df_coefplot <- subset(df_coefplot, df_coefplot$var != '(Intercept)')
+
+df_coefplot$var <- c('Albumin', 'Log Bilirubin', 
+'eGFR', 'Sodium', 'Durable LVAD', 'Short-Term MCS', 
+'Log BNP, Regular BNP', 'Log BNP, NT-proBNP')
+
+
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP, Regular BNP', 
+                                'Log BNP, NT-proBNP',
+                                'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
+
+
+### Scale certain estimates
+df_coefplot$french_est[df_coefplot$var == 'eGFR'] <- df_coefplot$french_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_est[df_coefplot$var == 'Sodium'] <- df_coefplot$french_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$french_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$french_stderr[df_coefplot$var == 'Sodium'] * 10
+
+
+df_coefplot$us_est[df_coefplot$var == 'eGFR'] <- df_coefplot$us_est[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_est[df_coefplot$var == 'Sodium'] <- df_coefplot$us_est[df_coefplot$var == 'Sodium'] * 10
+
+df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] <- df_coefplot$us_stderr[df_coefplot$var == 'eGFR'] * 10
+df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] <- df_coefplot$us_stderr[df_coefplot$var == 'Sodium'] * 10
 
 
 
 df_coefplot <- df_coefplot %>%
   mutate(
-    lower = est - (1.96*stderr),
-    upper = est + (1.96*stderr)) %>%
-  select(-c(stderr))
+    french_lower = french_est - (1.96*french_stderr),
+    french_upper = french_est + (1.96*french_stderr),
+    us_lower = us_est - (1.96*us_stderr),
+    us_upper = us_est + (1.96*us_stderr)) %>%
+  select(-c(french_stderr, us_stderr))
 
+
+df_coefplot <- df_coefplot %>%
+  pivot_longer(!var, names_to = 'stat', values_to = 'count')
+df_coefplot$model <- ifelse(grepl('^french', df_coefplot$stat), 'French', 'US')
+df_coefplot$stat <- sub('.*_', '', df_coefplot$stat)
+
+df_coefplot$est <- ifelse(df_coefplot$stat == 'est', df_coefplot$count, NA)
+df_coefplot$lower <- ifelse(df_coefplot$stat == 'lower', df_coefplot$count, NA)
+df_coefplot$upper <- ifelse(df_coefplot$stat == 'upper', df_coefplot$count, NA)
+
+df_coefplot$stat <- NULL; df_coefplot$count <- NULL
+df_coefplot <- df_coefplot %>%
+  group_by(var, model) %>%
+  summarize_all(~ max(., na.rm=T), .groups = 'drop')
+
+df_coefplot$est[df_coefplot$est == -Inf] <- NA
+df_coefplot$lower[df_coefplot$lower == -Inf] <- NA
+df_coefplot$upper[df_coefplot$upper == -Inf] <- NA
+
+df_coefplot <- df_coefplot %>%
+  arrange(sapply(var, 
+                 function(x) 
+                   which(x == c('Short-Term MCS', 'Log Bilirubin', 'eGFR', 
+                                'Log BNP, Regular BNP',
+                                'Log BNP, NT-proBNP', 
+                                'Albumin', 
+                                'Sodium', 'Durable LVAD'))))
 
 # dev.new(width = 7,height = 6, noRStudioGD = T)
 df_coefplot %>%
@@ -2510,9 +2587,9 @@ df_coefplot %>%
                             expression('eGFR'^'b'), 'Log Bilirubin', 
                             expression('Short-Term MCS'^'a'))) +
   scale_colour_manual(name='Model',
-                      breaks = c('6', '2'),
+                      breaks = c('US', 'French'),
                       values = c('#880d1e', '#3f88c5'), 
-                      labels = c('6-Week', '2-Week')) + 
+                      labels = c('US-CRS', 'Current French-CRS')) + 
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -2521,5 +2598,5 @@ df_coefplot %>%
         axis.title.y = element_blank(),
         axis.text.y = element_text(face='bold', size = 16, margin = margin(r=5)),
         legend.text = element_text(size = 18),
-        legend.title = element_text(size = 18)) 
+        legend.title = element_text(size = 18))  
 ```
