@@ -16,12 +16,12 @@ authors: Kevin Zhang
 <!-- 7. Create AUC curves (Line 1899) -->
 <!-- 8. Variable importance plots from gradient-boosted models (Line 1959) -->
 <!-- 9. Create calibration plot in test dataset (Line 2020) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2077) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2107) -->
-<!-- 12. Check for informative censoring (Line 2265) -->
-<!-- 13. Examine sensitivity and specificity at certain cut points (Line 2299) -->
-<!-- 14. Examine model performance based on temporal split (Line 2346) -->
-<!-- 15. Coefficient plot for 2 week outcome (Line 2414) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2078) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2108) -->
+<!-- 12. Check for informative censoring (Line 2266) -->
+<!-- 13. Examine sensitivity and specificity at certain cut points (Line 2300) -->
+<!-- 14. Examine model performance based on temporal split (Line 2347) -->
+<!-- 15. Coefficient plot for 2 week outcome (Line 2415) -->
 
 
 
@@ -2027,7 +2027,8 @@ df_intervals <- df_intervals %>%
   mutate(uscrs_score = cut_number(uscrs_predict, 50, labels= FALSE))
 
 
-df_intervals_calib$death6week <- as.numeric(as.character(df_intervals$death6week))
+df_intervals_calib <- df_intervals
+df_intervals_calib$death6week <- as.numeric(as.character(df_intervals_calib$death6week))
 df_intervals_test_calib <- subset(df_intervals_calib, df_intervals_calib$train_test == 'Test')
 df_intervals_test_calib <- df_intervals_test_calib %>% select(death6week, uscrs_predict, uscrs_score)
 df_intervals_test_calib <- subset(df_intervals_test_calib, !is.na(uscrs_score))
