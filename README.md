@@ -78,6 +78,8 @@ Updated 10/15/2023: Minor change to legend of AUC curves.
 
 Updated 10/22/2023: Sensitivity and specificity code revised.
 
+Updated 11/24/2023: Robust standard errors clustered by center are now used.
+
 
 ### 5. results_unblocked.Rmd
 Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
