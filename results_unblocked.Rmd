@@ -410,7 +410,7 @@ df <- df %>%
 
 # 5. Create AUC curves 
 
-### ROC curve for subset of models (Figure 2)
+### ROC curve for subset of models 
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
 load('./model_frenchCRS_new.RData')
@@ -459,7 +459,7 @@ legend('bottomright', xpd = T,
 
 # 6. Make prediction figures on unblocked dataset
 
-## Boxplot of predicted risk by status (eFigure 3)
+## Boxplot of predicted risk by status 
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_boxplot <- subset(df_model_us, !is.na(df_model_us$status))
