@@ -81,8 +81,8 @@ Updated 10/22/2023: Sensitivity and specificity code revised.
 Updated 11/24/2023: Robust standard errors clustered by center are now used. Mixed models removed.
 
 
-### 5. results_unblocked.Rmd
-Figures and discrimination, calibration from the full, unblocked (no 14-day intervals) dataset. 
+### 5. results_continuous.Rmd
+Figures and discrimination, calibration from the full, continuous (no 14-day intervals) dataset. 
 
 Updated 7/9/2023: Added.
 
@@ -102,4 +102,4 @@ Updated 8/25/2023: IABP, durable and perc LVAD variables added.
 
 Updated 10/14/2023: Updated notes on Harrell's c, also draws an AUC curve. Generalized c-index added.
 
-
+Updated 10/27/2023: Name changed to results_continuous, bootstrapping and time-dependent AUC's added. 
