@@ -10,19 +10,19 @@ authors: Kevin Zhang
 <!-- 1. Set up dataset with generated cardiac variables (Line 42) -->
 <!-- 2. Set up matrices for predictions (Line 155) -->
 <!-- 3. Run selected logistic regression models and create coefficient plots (Line 608) -->
-<!-- 4. Run sensitivity logistic regression models (Line 1692) -->
-<!-- 5. Obtain machine learning model results (Line 1770) -->
-<!-- 6. Make predictions on test dataset (Line 1832) -->
-<!-- 7. Create AUC curves (Line 1893) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 2093) -->
-<!-- 9. Create calibration plot in test dataset (Line 2154) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2213) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2243) -->
-<!-- 12. Check for informative censoring (Line 2401) -->
-<!-- 13. Examine a model with center random effects (Line 2434) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2455) -->
-<!-- 15. Examine model performance based on temporal split (Line 2501) -->
-<!-- 16. Coefficient plot for 2 week outcome (Line 2569) -->
+<!-- 4. Run sensitivity logistic regression models (Line 1693) -->
+<!-- 5. Obtain machine learning model results (Line 1771) -->
+<!-- 6. Make predictions on test dataset (Line 1833) -->
+<!-- 7. Create AUC curves (Line 1894) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 2094) -->
+<!-- 9. Create calibration plot in test dataset (Line 2155) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2214) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2244) -->
+<!-- 12. Check for informative censoring (Line 2402) -->
+<!-- 13. Examine a model with center random effects (Line 2435) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2456) -->
+<!-- 15. Examine model performance based on temporal split (Line 2502) -->
+<!-- 16. Coefficient plot for 2 week outcome (Line 2570) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -1397,6 +1397,7 @@ df_coefplot <- as.data.frame(
 df_coefplot$var <- rownames(df_coefplot)
 rownames(df_coefplot) <- NULL
 colnames(df_coefplot) <- c('us_est', 'us_stderr', 'var')
+df_coefplot2 <- df_coefplot
 
 df_coefplot$french_est <- NA
 df_coefplot$french_stderr <- NA
@@ -2636,21 +2637,21 @@ df_coefplot$six_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <-
 
 
 df_coefplot$six_stderr[df_coefplot$var == 'short_MCS_ever'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['short_MCS_ever','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'short_MCS_ever']
 df_coefplot$six_stderr[df_coefplot$var == 'log(bilirubin + 1)'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['log(bilirubin + 1)','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'log(bilirubin + 1)']
 df_coefplot$six_stderr[df_coefplot$var == 'eGFR'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['eGFR','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'eGFR']
 df_coefplot$six_stderr[df_coefplot$var == 'sodium'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['sodium','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'sodium']
 df_coefplot$six_stderr[df_coefplot$var == 'albumin'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['albumin','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'albumin']
 df_coefplot$six_stderr[df_coefplot$var == 'LVAD1'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['LVAD1','Std. Error']
+   df_coefplot2$us_stderr[df_coefplot2$var == 'LVAD1']
 df_coefplot$six_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['log(BNP + 1):BNP_NT_Pro0','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'log(BNP + 1):BNP_NT_Pro0']
 df_coefplot$six_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
-  as.data.frame(lmtest::coeftest(model_final, vcov=vcovCL, cluster=~PX_ID)[,])['log(BNP + 1):BNP_NT_Pro1','Std. Error']
+  df_coefplot2$us_stderr[df_coefplot2$var == 'log(BNP + 1):BNP_NT_Pro1']
 
 
 df_coefplot <- df_coefplot[ ,c('var', 'six_est', 'six_stderr', 'two_est', 'two_stderr')]
