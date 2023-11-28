@@ -8,15 +8,11 @@ authors: Kevin Zhang
 ---
 
 
-<!-- 1. Set up continuous dataset (Line 35) -->
-<!-- 2. Comparison of training and testing datasets (Line 82) -->
-<!-- 3. Find missing % at listing (Line 271) -->
-<!-- 4. Impute values into unblocked dataset (Line 299) -->
-<!-- 5. Create AUC curves (Line 411) -->
-<!-- 6. Make prediction figures on unblocked dataset (Line 460) -->
-<!-- 7. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 489) -->
-
-
+<!-- 1. Set up continuous dataset (Line 31) -->
+<!-- 2. Comparison of training and testing datasets (Line 78) -->
+<!-- 3. Find missing % at listing (Line 267) -->
+<!-- 4. Impute values into unblocked dataset (Line 295) -->
+<!-- 5. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 407) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -64,7 +60,7 @@ df <- df %>%
     TRUE ~ 0)) %>%
   select(-c(death_flag, transplant)) %>%
   
-  mutate(death = max(death))
+  mutate(death=max(death))
 
 
 ## Certain variables need to be obtained from cand_thor since demographics not used in model
@@ -408,142 +404,86 @@ df <- df %>%
 ---------------------------------
 
 
-# 5. Create AUC curves 
+# 5. Cox PH with US-CRS predictors on unblocked and generalized c-index
 
-### ROC curve for subset of models 
-
-```{r, warning=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
+```{r, warning=F, message=F, comment=NA}
 load('./model_frenchCRS_new.RData')
 load('./model_USCRS.RData')
 
-df_model_french_new <- df %>% filter(train_test == 'Test') %>% 
-  select(PX_ID, t_start, t_stop, death, short_MCS_French_new, 
-         bilirubin, eGFR, BNP, BNP_NT_Pro)
-df_model_french_new$BNP_NT_Pro <- as.factor(df_model_french_new$BNP_NT_Pro)
-df_model_french_new$predict <- predict(model_french_new, newdata = df_model_french_new, type = 'response')
-
-
-df_model_us <- df %>% filter(train_test == 'Test') %>% 
-  select(PX_ID, t_start, t_stop, death, status, cpo, papi, albumin,
-                           bilirubin, eGFR, sodium, BNP, BNP_NT_Pro, LVAD, short_MCS_ever)
-df_model_us$BNP_NT_Pro <- as.character(df_model_us$BNP_NT_Pro)
-df_model_us$predict <- predict(model_final, newdata = df_model_us, type = 'response')
-
-
-# dev.new(width = 7,height = 6, noRStudioGD = T)
-df$death <- as.numeric(as.character(df$death))
-df$status_initial <- factor(df$status_initial, levels=c('1', '2', '3', '4', '5', '6'), ordered=T)
-
-pROC::roc(data=df[df$train_test == 'Test', ], response=death, predictor=status_initial, direction='>',
-          plot=T, col='#880d1e', print.auc=T, ci=F,
-          lwd=3, quiet=T, print.thres = c(1,2,3,4,5,6), 
-          print.thres.cex = 1.2, 
-          print.thres.pattern= "Status%2.f",
-          print.auc.cex = 1.2,
-          legacy.axes=T)
-pROC::roc(df_model_french_new$death ~ df_model_french_new$predict, direction='<',
-          plot=T, print.auc=T, ci=F, ci.type = 'no',
-          print.auc.y=0.45, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
-pROC::roc(df_model_us$death ~ df_model_us$predict, direction='<',
-          plot=T, print.auc=T, ci=F, ci.type = 'no',
-          print.auc.y=0.40, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
-text(x=0.05, y=1.02, labels='Status 6')
-legend('bottomright', xpd = T,
-      legend = c('6-Status', 'Current French CRS', 'US CRS'),
-       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
-```
-
-
----------------------------------
-
-
-# 6. Make prediction figures on unblocked dataset
-
-## Boxplot of predicted risk by status 
-
-```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
-df_boxplot <- subset(df_model_us, !is.na(df_model_us$status))
-
-
-# dev.new(width = 7,height = 6, noRStudioGD = T)
-df_boxplot %>%
-  ggplot(aes(y = predict, x = status, color = factor(status))) +
-  geom_boxplot() +
-  xlab('') + ylab('Predicted Risk from US-CRS') + labs(color = 'Status') +
-  theme_bw() + 
-  scale_color_manual(values = c('#880d1e', '#a37c40', 'wheat3', '#3f88c5', 'grey', '#07090f')) +
-  theme(
-    panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-    axis.title.x = element_text(size = 14, margin = margin(t=5)), 
-    axis.text.x = element_text(size = 13, margin = margin(t=5)), 
-    axis.title.y = element_text(size = 14, margin = margin(r=5)),
-    axis.text.y = element_text(size = 13, margin = margin(r=5)),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13))
-```
-
-
----------------------------------
-
-
-# 7. Cox PH with US-CRS predictors on unblocked and generalized c-index
-
-```{r, warning=F, message=F, comment=NA}
 pacman::p_load(risksetROC)
 df$BNP_NT_Pro <- as.factor(df$BNP_NT_Pro)
 
+## Basic Cox model
+model_us <- coxph(Surv(t_start, t_stop, death) ~ albumin + log(bilirubin + 1) + 
+        eGFR + sodium + (log(BNP + 1):BNP_NT_Pro) + LVAD + short_MCS_ever, 
+      data = df[df$train_test == 'Train',])
 
-model_french <- coxph(Surv(t_start, t_stop, death) ~ 
-                        short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro, 
-                  data = df[df$train_test == 'Train',])
-eta_french <- model_french$linear.predictor
-
-df_train <- subset(df, df$train_test == 'Train')
-df_train$predict <- predict(model_french, df_train)
-df_train <- df_train %>% filter(!is.na(predict))
-
-survival.time_french <- unlist(as.vector(df_train[,'t_stop']))
-survival.status_french <- unlist(as.vector(df_train[,'death']))
-
-#######
-
-model_us <- coxph(Surv(t_start, t_stop, death) ~ 
-                    albumin + log(bilirubin + 1) + 
-                    eGFR + sodium + 
-                    (log(BNP + 1):BNP_NT_Pro) + LVAD + short_MCS_ever, 
-                  data = df[df$train_test == 'Train',])
-eta_us <- model_us$linear.predictor
-
-df_train <- subset(df, df$train_test == 'Train')
-df_train$predict <- predict(model_us, df_train)
-df_train <- df_train %>% filter(!is.na(predict))
-
-survival.time_us <- unlist(as.vector(df_train[,'t_stop']))
-survival.status_us <- unlist(as.vector(df_train[,'death']))
-
-#######
-
-model_cox6 <- coxph(Surv(t_start, t_stop, death) ~ 
-                    status_initial, 
-                  data = df[df$train_test == 'Train',])
-eta_6 <- model_cox6$linear.predictor
-
-survival.time_6 <- unlist(as.vector(df[df$train_test == 'Train' & !is.na(df$status_initial),
-                                      't_stop']))
-survival.status_6 <- unlist(as.vector(df[df$train_test == 'Train'& !is.na(df$status_initial),
-                                        'death']))
+df$us_predict <- predict(model_final, df)
+df$french_predict <- predict(model_french_new, df)
+df$status_ranking <- 10 - as.numeric(df$status)
+df <- df %>% 
+  filter(train_test == 'Test') %>%
+  filter(!is.na(status_ranking) & !is.na(us_predict) & !is.na(french_predict))
 
 
+### Functions to get generalized c-index
+get_overall_six <- function(data){
+  r <- risksetAUC(
+    Stime= data$t_stop,
+    entry = data$t_start,
+    status = data$death,
+    marker = data$status_ranking,
+    method = 'Cox',
+    tmax = 365*2,
+    plot = F)
+  return(r$Cindex)
+}
 
-roc_french <- risksetROC::risksetAUC(Stime = survival.time_french, status = survival.status_french,
-                       marker = eta_french, method = 'Cox', tmax = max(survival.time_french), plot=F)
-roc_us <- risksetROC::risksetAUC(Stime = survival.time_us, status = survival.status_us,
-                       marker = eta_us, method = 'Cox', tmax = max(survival.time_us), plot=F)
-roc_6 <- risksetROC::risksetAUC(Stime = survival.time_6, status = survival.status_6,
-                       marker = eta_6, method = 'Cox', tmax = max(survival.time_6), plot=F)
+get_overall_french <- function(data){
+  r <- risksetAUC(
+    Stime= data$t_stop,
+    entry = data$t_start,
+    status = data$death,
+    marker = data$french_predict,
+    method = 'Cox',    
+    tmax = 365*2,
+    plot = F)
+  return(r$Cindex)
+}
+
+get_overall_us <- function(data){
+  r <- risksetAUC(
+    Stime= data$t_stop,
+    entry = data$t_start,
+    status = data$death,
+    marker = data$us_predict,
+    method = 'Cox',
+    tmax = 365*2,
+    plot = F)
+  return(r$Cindex)
+}
+
+### Functions to bootstrap standard errors
+bootstrap_six <- replicate(2000, get_overall_six(df[sample(nrow(df), nrow(df), replace = T), ]))
+bootstrap_french <- replicate(2000, get_overall_french(df[sample(nrow(df), nrow(df), replace = T), ]))
+bootstrap_us <- replicate(2000, get_overall_us(df[sample(nrow(df), nrow(df), replace = T), ]))
 
 
-IntegrateAUC(AUC=roc_french$AUC, St=roc_french$St, utimes = roc_french$utimes, tmax=max(survival.time_french))
-IntegrateAUC(AUC=roc_us$AUC, St=roc_us$St, utimes = roc_us$utimes, tmax=max(survival.time_us))
-IntegrateAUC(AUC=roc_6$AUC, St=roc_6$St, utimes = roc_6$utimes, tmax=max(survival.time_6))
+set.seed(200)
+```
+
+
+```{r, warning=F, message=F, comment=NA}
+get_overall_six(df)
+quantile(bootstrap_six, c(0.025, 0.975))
+```
+
+```{r, warning=F, message=F, comment=NA}
+get_overall_french(df)
+quantile(bootstrap_french, c(0.025, 0.975))
+```
+
+```{r, warning=F, message=F, comment=NA}
+get_overall_us(df)
+quantile(bootstrap_us, c(0.025, 0.975))
 ```
