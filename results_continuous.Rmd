@@ -20,7 +20,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
-               pROC, xgboost, survival, DescTools)
+               pROC, survival, DescTools, rsample)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -420,7 +420,9 @@ model_us <- coxph(Surv(t_start, t_stop, death) ~ albumin + log(bilirubin + 1) +
 
 df$us_predict <- predict(model_final, df)
 df$french_predict <- predict(model_french_new, df)
-df$status_ranking <- 10 - as.numeric(df$status)
+
+
+df$status_ranking <- 10 - as.numeric(df$status_initial)
 df <- df %>% 
   filter(train_test == 'Test') %>%
   filter(!is.na(status_ranking) & !is.na(us_predict) & !is.na(french_predict))
@@ -463,27 +465,54 @@ get_overall_us <- function(data){
   return(r$Cindex)
 }
 
-### Functions to bootstrap standard errors
-bootstrap_six <- replicate(2000, get_overall_six(df[sample(nrow(df), nrow(df), replace = T), ]))
-bootstrap_french <- replicate(2000, get_overall_french(df[sample(nrow(df), nrow(df), replace = T), ]))
-bootstrap_us <- replicate(2000, get_overall_us(df[sample(nrow(df), nrow(df), replace = T), ]))
+df_short <- df[ ,c('PX_ID', 't_start', 't_stop', 'death', 'us_predict', 
+                  'french_predict', 'status_ranking')]
+df_nest <- df_short %>% nest(-PX_ID)
+```
 
 
+```{r, warning=F, message=F, comment=NA}
 set.seed(200)
-```
-
-
-```{r, warning=F, message=F, comment=NA}
 get_overall_six(df)
-quantile(bootstrap_six, c(0.025, 0.975))
+
+n_iterations <- 2000
+bs <- rsample::bootstraps(df_nest, times = n_iterations)
+auc_list_six <- vector(length = n_iterations)
+
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  auc_list_six[i] <- get_overall_six(result_df)
+}
+
+
+quantile(auc_list_six, probs = c(0.025, 0.975))
 ```
 
 ```{r, warning=F, message=F, comment=NA}
+set.seed(200)
 get_overall_french(df)
-quantile(bootstrap_french, c(0.025, 0.975))
+
+auc_list_french <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  auc_list_french[i] <- get_overall_french(result_df)
+}
+
+quantile(auc_list_french, probs = c(0.025, 0.975))
 ```
 
 ```{r, warning=F, message=F, comment=NA}
+set.seed(200)
 get_overall_us(df)
-quantile(bootstrap_us, c(0.025, 0.975))
+
+auc_list_us <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  auc_list_us[i] <- get_overall_us(result_df)
+}
+
+quantile(auc_list_us, probs = c(0.025, 0.975))
 ```
