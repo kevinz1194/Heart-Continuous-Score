@@ -16,13 +16,13 @@ authors: Kevin Zhang
 <!-- 7. Create AUC curves (Line 1894) -->
 <!-- 8. Variable importance plots from gradient-boosted models (Line 2094) -->
 <!-- 9. Create calibration plot in test dataset (Line 2155) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2214) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2244) -->
-<!-- 12. Check for informative censoring (Line 2402) -->
-<!-- 13. Examine a model with center random effects (Line 2435) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2456) -->
-<!-- 15. Examine model performance based on temporal split (Line 2502) -->
-<!-- 16. Coefficient plot for 2 week outcome (Line 2570) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2264) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2294) -->
+<!-- 12. Check for informative censoring (Line 2647) -->
+<!-- 13. Examine a model with center random effects (Line 2680) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2701) -->
+<!-- 15. Examine model performance based on temporal split (Line 2747) -->
+<!-- 16. Coefficient plot for 2 week outcome (Line 2815) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -31,7 +31,7 @@ if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
                pROC, xgboost, survival, DescTools, cowplot, lme4,  
-               lmtest, sandwich)
+               lmtest, sandwich, rsample)
 knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
@@ -2165,22 +2165,72 @@ df_intervals <- df_intervals %>%
 df_intervals_calib <- df_intervals
 df_intervals_calib$death6week <- as.numeric(as.character(df_intervals_calib$death6week))
 df_intervals_test_calib <- subset(df_intervals_calib, df_intervals_calib$train_test == 'Test')
-df_intervals_test_calib <- df_intervals_test_calib %>% select(death6week, uscrs_predict, uscrs_score)
+df_intervals_test_calib <- df_intervals_test_calib %>% select(PX_ID, death6week, 
+                                                              uscrs_predict, uscrs_score)
 df_intervals_test_calib <- subset(df_intervals_test_calib, !is.na(uscrs_score))
 
 
-df_intervals_test_calib <- 
-  df_intervals_test_calib %>%
+df_calib_nest <- df_intervals_test_calib %>% nest(-PX_ID)
+set.seed(200)
+n_iterations <- 2000
+bs <- rsample::bootstraps(df_calib_nest, times = n_iterations)
+
+se_cut1 <- vector(length = n_iterations)
+se_cut2 <- vector(length = n_iterations)
+se_cut3 <- vector(length = n_iterations)
+se_cut4 <- vector(length = n_iterations)
+se_cut5 <- vector(length = n_iterations)
+se_cut6 <- vector(length = n_iterations)
+se_cut7 <- vector(length = n_iterations)
+se_cut8 <- vector(length = n_iterations)
+se_cut9 <- vector(length = n_iterations)
+se_cut10 <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  result_df <- result_df %>%
+    mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+    group_by(decile_predictions) %>% 
+    summarise(predicted = mean(uscrs_predict),
+              observed = mean(death6week),
+              total = n()) %>%
+    mutate(sd = sqrt(observed*(1-observed)),
+           se = sd/sqrt(total))
+  
+  se_cut1[i] <- result_df$se[result_df$decile_predictions == '1']
+  se_cut2[i] <- result_df$se[result_df$decile_predictions == '2']
+  se_cut3[i] <- result_df$se[result_df$decile_predictions == '3']
+  se_cut4[i] <- result_df$se[result_df$decile_predictions == '4']
+  se_cut5[i] <- result_df$se[result_df$decile_predictions == '5']
+  se_cut6[i] <- result_df$se[result_df$decile_predictions == '6']
+  se_cut7[i] <- result_df$se[result_df$decile_predictions == '7']
+  se_cut8[i] <- result_df$se[result_df$decile_predictions == '8']
+  se_cut9[i] <- result_df$se[result_df$decile_predictions == '9']
+  se_cut10[i] <- result_df$se[result_df$decile_predictions == '10']
+}
+
+
+
+df_intervals_test_calib <- df_intervals_test_calib %>%
   mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
             observed = mean(death6week),
-            mean_uscrs =  mean(uscrs_score),
-            total = n()) %>%
-  mutate(sd = sqrt(observed*(1-observed)),
-         se = sd/sqrt(total),
-         upper_ci = observed + 1.96*se,
+            mean_uscrs =  mean(uscrs_score)) %>%
+  
+  mutate(se = case_when(decile_predictions == '1' ~ mean(se_cut1),
+                        decile_predictions == '2' ~ mean(se_cut2),
+                        decile_predictions == '3' ~ mean(se_cut3),
+                        decile_predictions == '4' ~ mean(se_cut4),
+                        decile_predictions == '5' ~ mean(se_cut5),
+                        decile_predictions == '6' ~ mean(se_cut6),
+                        decile_predictions == '7' ~ mean(se_cut7),
+                        decile_predictions == '8' ~ mean(se_cut8),
+                        decile_predictions == '9' ~ mean(se_cut9),
+                        decile_predictions == '10' ~ mean(se_cut10))) %>%
+  mutate(upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se)
+
 
 # dev.new(width = 8, height = 8, noRStudioGD = T)
 par(xaxs='i')
@@ -2280,6 +2330,50 @@ df_gender_race %>% ungroup() %>% filter(interval==1) %>%
 
 
 
+set.seed(200)
+n_iterations <- 2000
+
+
+###############################################################
+df_gender_race_nest <- df_gender_race %>% filter(female == 'Female') %>% 
+  nest(-PX_ID)
+bs <- rsample::bootstraps(df_gender_race_nest, times = n_iterations)
+se_cut1 <- vector(length = n_iterations)
+se_cut2 <- vector(length = n_iterations)
+se_cut3 <- vector(length = n_iterations)
+se_cut4 <- vector(length = n_iterations)
+se_cut5 <- vector(length = n_iterations)
+se_cut6 <- vector(length = n_iterations)
+se_cut7 <- vector(length = n_iterations)
+se_cut8 <- vector(length = n_iterations)
+se_cut9 <- vector(length = n_iterations)
+se_cut10 <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  result_df <- result_df %>%
+    mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+    group_by(decile_predictions) %>% 
+    summarise(predicted = mean(uscrs_predict),
+              observed = mean(as.numeric(as.character(death6week))),
+              total = n()) %>%
+    mutate(sd = sqrt(observed*(1-observed)),
+           se = sd/sqrt(total))
+  
+  se_cut1[i] <- result_df$se[result_df$decile_predictions == '1']
+  se_cut2[i] <- result_df$se[result_df$decile_predictions == '2']
+  se_cut3[i] <- result_df$se[result_df$decile_predictions == '3']
+  se_cut4[i] <- result_df$se[result_df$decile_predictions == '4']
+  se_cut5[i] <- result_df$se[result_df$decile_predictions == '5']
+  se_cut6[i] <- result_df$se[result_df$decile_predictions == '6']
+  se_cut7[i] <- result_df$se[result_df$decile_predictions == '7']
+  se_cut8[i] <- result_df$se[result_df$decile_predictions == '8']
+  se_cut9[i] <- result_df$se[result_df$decile_predictions == '9']
+  se_cut10[i] <- result_df$se[result_df$decile_predictions == '10']
+}
+
+
+
 p1 <- df_gender_race %>%
   ungroup() %>%
   filter(female == 'Female') %>%
@@ -2287,12 +2381,20 @@ p1 <- df_gender_race %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
             observed = mean(as.numeric(as.character(death6week))),
-            mean_uscrs =  mean(uscrs_score),
-            total = n()) %>%
-  mutate(sd = sqrt(observed*(1-observed)),
-         se = sd/sqrt(total),
-         upper_ci = observed + 1.96*se,
+            mean_uscrs =  mean(uscrs_score)) %>%
+  mutate(se = case_when(decile_predictions == '1' ~ mean(se_cut1),
+                        decile_predictions == '2' ~ mean(se_cut2),
+                        decile_predictions == '3' ~ mean(se_cut3),
+                        decile_predictions == '4' ~ mean(se_cut4),
+                        decile_predictions == '5' ~ mean(se_cut5),
+                        decile_predictions == '6' ~ mean(se_cut6),
+                        decile_predictions == '7' ~ mean(se_cut7),
+                        decile_predictions == '8' ~ mean(se_cut8),
+                        decile_predictions == '9' ~ mean(se_cut9),
+                        decile_predictions == '10' ~ mean(se_cut10))) %>%
+  mutate(upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se) %>%
+
   ggplot(aes(x = predicted, y = observed)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) + 
   geom_abline(slope = 1, intercept = 0, color = '#880d1e', linetype = 2) + 
@@ -2308,6 +2410,46 @@ p1 <- df_gender_race %>%
         legend.title = element_text(size = 12, face='bold'),
         legend.text = element_text(size = 12)) 
 
+
+###############################################################
+df_gender_race_nest <- df_gender_race %>% filter(female == 'Male') %>% 
+  nest(-PX_ID)
+bs <- rsample::bootstraps(df_gender_race_nest, times = n_iterations)
+se_cut1 <- vector(length = n_iterations)
+se_cut2 <- vector(length = n_iterations)
+se_cut3 <- vector(length = n_iterations)
+se_cut4 <- vector(length = n_iterations)
+se_cut5 <- vector(length = n_iterations)
+se_cut6 <- vector(length = n_iterations)
+se_cut7 <- vector(length = n_iterations)
+se_cut8 <- vector(length = n_iterations)
+se_cut9 <- vector(length = n_iterations)
+se_cut10 <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  result_df <- result_df %>%
+    mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+    group_by(decile_predictions) %>% 
+    summarise(predicted = mean(uscrs_predict),
+              observed = mean(as.numeric(as.character(death6week))),
+              total = n()) %>%
+    mutate(sd = sqrt(observed*(1-observed)),
+           se = sd/sqrt(total))
+  
+  se_cut1[i] <- result_df$se[result_df$decile_predictions == '1']
+  se_cut2[i] <- result_df$se[result_df$decile_predictions == '2']
+  se_cut3[i] <- result_df$se[result_df$decile_predictions == '3']
+  se_cut4[i] <- result_df$se[result_df$decile_predictions == '4']
+  se_cut5[i] <- result_df$se[result_df$decile_predictions == '5']
+  se_cut6[i] <- result_df$se[result_df$decile_predictions == '6']
+  se_cut7[i] <- result_df$se[result_df$decile_predictions == '7']
+  se_cut8[i] <- result_df$se[result_df$decile_predictions == '8']
+  se_cut9[i] <- result_df$se[result_df$decile_predictions == '9']
+  se_cut10[i] <- result_df$se[result_df$decile_predictions == '10']
+}
+
+
 p2 <- df_gender_race %>%
   ungroup() %>%
   filter(female == 'Male') %>%
@@ -2315,11 +2457,19 @@ p2 <- df_gender_race %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
             observed = mean(as.numeric(as.character(death6week))),
-            mean_uscrs =  mean(uscrs_score),
-            total = n()) %>%
-  mutate(sd = sqrt(observed*(1-observed)),
-         se = sd/sqrt(total),
-         upper_ci = observed + 1.96*se,
+            mean_uscrs =  mean(uscrs_score)) %>%
+  mutate(se = case_when(decile_predictions == '1' ~ mean(se_cut1),
+                        decile_predictions == '2' ~ mean(se_cut2),
+                        decile_predictions == '3' ~ mean(se_cut3),
+                        decile_predictions == '4' ~ mean(se_cut4),
+                        decile_predictions == '5' ~ mean(se_cut5),
+                        decile_predictions == '6' ~ mean(se_cut6),
+                        decile_predictions == '7' ~ mean(se_cut7),
+                        decile_predictions == '8' ~ mean(se_cut8),
+                        decile_predictions == '9' ~ mean(se_cut9),
+                        decile_predictions == '10' ~ mean(se_cut10))) %>%
+  
+  mutate(upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se) %>%
   ggplot(aes(x = predicted, y = observed)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) + 
@@ -2336,6 +2486,45 @@ p2 <- df_gender_race %>%
         legend.title = element_text(size = 12, face='bold'),
         legend.text = element_text(size = 12)) 
 
+  
+###############################################################  
+df_gender_race_nest <- df_gender_race %>% filter(race == 'Not White') %>% 
+  nest(-PX_ID)
+bs <- rsample::bootstraps(df_gender_race_nest, times = n_iterations)
+se_cut1 <- vector(length = n_iterations)
+se_cut2 <- vector(length = n_iterations)
+se_cut3 <- vector(length = n_iterations)
+se_cut4 <- vector(length = n_iterations)
+se_cut5 <- vector(length = n_iterations)
+se_cut6 <- vector(length = n_iterations)
+se_cut7 <- vector(length = n_iterations)
+se_cut8 <- vector(length = n_iterations)
+se_cut9 <- vector(length = n_iterations)
+se_cut10 <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  result_df <- result_df %>%
+    mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+    group_by(decile_predictions) %>% 
+    summarise(predicted = mean(uscrs_predict),
+              observed = mean(as.numeric(as.character(death6week))),
+              total = n()) %>%
+    mutate(sd = sqrt(observed*(1-observed)),
+           se = sd/sqrt(total))
+  
+  se_cut1[i] <- result_df$se[result_df$decile_predictions == '1']
+  se_cut2[i] <- result_df$se[result_df$decile_predictions == '2']
+  se_cut3[i] <- result_df$se[result_df$decile_predictions == '3']
+  se_cut4[i] <- result_df$se[result_df$decile_predictions == '4']
+  se_cut5[i] <- result_df$se[result_df$decile_predictions == '5']
+  se_cut6[i] <- result_df$se[result_df$decile_predictions == '6']
+  se_cut7[i] <- result_df$se[result_df$decile_predictions == '7']
+  se_cut8[i] <- result_df$se[result_df$decile_predictions == '8']
+  se_cut9[i] <- result_df$se[result_df$decile_predictions == '9']
+  se_cut10[i] <- result_df$se[result_df$decile_predictions == '10']
+}
+
 p3 <- df_gender_race %>%
   ungroup() %>%
   filter(race == 'Not White') %>%
@@ -2343,12 +2532,20 @@ p3 <- df_gender_race %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
             observed = mean(as.numeric(as.character(death6week))),
-            mean_uscrs =  mean(uscrs_score),
-            total = n()) %>%
-  mutate(sd = sqrt(observed*(1-observed)),
-         se = sd/sqrt(total),
-         upper_ci = observed + 1.96*se,
+            mean_uscrs =  mean(uscrs_score)) %>%
+  mutate(se = case_when(decile_predictions == '1' ~ mean(se_cut1),
+                        decile_predictions == '2' ~ mean(se_cut2),
+                        decile_predictions == '3' ~ mean(se_cut3),
+                        decile_predictions == '4' ~ mean(se_cut4),
+                        decile_predictions == '5' ~ mean(se_cut5),
+                        decile_predictions == '6' ~ mean(se_cut6),
+                        decile_predictions == '7' ~ mean(se_cut7),
+                        decile_predictions == '8' ~ mean(se_cut8),
+                        decile_predictions == '9' ~ mean(se_cut9),
+                        decile_predictions == '10' ~ mean(se_cut10))) %>%
+  mutate(upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se) %>%
+  
   ggplot(aes(x = predicted, y = observed)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) + 
   geom_abline(slope = 1, intercept = 0, color = '#880d1e', linetype = 2) + 
@@ -2364,6 +2561,45 @@ p3 <- df_gender_race %>%
         legend.title = element_text(size = 12, face='bold'),
         legend.text = element_text(size = 12)) 
 
+
+###############################################################  
+df_gender_race_nest <- df_gender_race %>% filter(race == 'White') %>% 
+  nest(-PX_ID)
+bs <- rsample::bootstraps(df_gender_race_nest, times = n_iterations)
+se_cut1 <- vector(length = n_iterations)
+se_cut2 <- vector(length = n_iterations)
+se_cut3 <- vector(length = n_iterations)
+se_cut4 <- vector(length = n_iterations)
+se_cut5 <- vector(length = n_iterations)
+se_cut6 <- vector(length = n_iterations)
+se_cut7 <- vector(length = n_iterations)
+se_cut8 <- vector(length = n_iterations)
+se_cut9 <- vector(length = n_iterations)
+se_cut10 <- vector(length = n_iterations)
+
+for (i in 1:n_iterations) {
+  result_df <- as.tibble(bs$splits[[i]]) %>% unnest() %>% as.data.frame()
+  result_df <- result_df %>%
+    mutate(decile_predictions = cut_number(uscrs_predict, 10, labels= FALSE)) %>%
+    group_by(decile_predictions) %>% 
+    summarise(predicted = mean(uscrs_predict),
+              observed = mean(as.numeric(as.character(death6week))),
+              total = n()) %>%
+    mutate(sd = sqrt(observed*(1-observed)),
+           se = sd/sqrt(total))
+  
+  se_cut1[i] <- result_df$se[result_df$decile_predictions == '1']
+  se_cut2[i] <- result_df$se[result_df$decile_predictions == '2']
+  se_cut3[i] <- result_df$se[result_df$decile_predictions == '3']
+  se_cut4[i] <- result_df$se[result_df$decile_predictions == '4']
+  se_cut5[i] <- result_df$se[result_df$decile_predictions == '5']
+  se_cut6[i] <- result_df$se[result_df$decile_predictions == '6']
+  se_cut7[i] <- result_df$se[result_df$decile_predictions == '7']
+  se_cut8[i] <- result_df$se[result_df$decile_predictions == '8']
+  se_cut9[i] <- result_df$se[result_df$decile_predictions == '9']
+  se_cut10[i] <- result_df$se[result_df$decile_predictions == '10']
+}
+
 p4 <- df_gender_race %>%
   ungroup() %>%
   filter(race == 'White') %>%
@@ -2371,12 +2607,20 @@ p4 <- df_gender_race %>%
   group_by(decile_predictions) %>%
   summarise(predicted = mean(uscrs_predict),
             observed = mean(as.numeric(as.character(death6week))),
-            mean_uscrs =  mean(uscrs_score),
-            total = n()) %>%
-  mutate(sd = sqrt(observed*(1-observed)),
-         se = sd/sqrt(total),
-         upper_ci = observed + 1.96*se,
+            mean_uscrs =  mean(uscrs_score)) %>%
+  mutate(se = case_when(decile_predictions == '1' ~ mean(se_cut1),
+                        decile_predictions == '2' ~ mean(se_cut2),
+                        decile_predictions == '3' ~ mean(se_cut3),
+                        decile_predictions == '4' ~ mean(se_cut4),
+                        decile_predictions == '5' ~ mean(se_cut5),
+                        decile_predictions == '6' ~ mean(se_cut6),
+                        decile_predictions == '7' ~ mean(se_cut7),
+                        decile_predictions == '8' ~ mean(se_cut8),
+                        decile_predictions == '9' ~ mean(se_cut9),
+                        decile_predictions == '10' ~ mean(se_cut10))) %>%
+  mutate(upper_ci = observed + 1.96*se,
          lower_ci = observed - 1.96*se) %>%
+  
   ggplot(aes(x = predicted, y = observed)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) + 
   geom_abline(slope = 1, intercept = 0, color = '#880d1e', linetype = 2) + 
@@ -2391,6 +2635,7 @@ p4 <- df_gender_race %>%
         axis.text.y = element_text(size = 13, margin = margin(r=5)),
         legend.title = element_text(size = 12, face='bold'),
         legend.text = element_text(size = 12))     
+
 
 cowplot::plot_grid(p1, p2, p3, p4, ncol=2, labels='auto', scale=0.9)
 ```
@@ -2453,7 +2698,7 @@ glmer(formula = as.formula(
 -------------
 
 
-# 14. Examine sensitivity and specificity at certain cut points for s=0
+# 14. Examine sensitivity and specificity at certain cut points 
 
 ```{r, echo=F, warning=F, message=F, comment=NA}
 sixstatus_auc <- roc(data=df_intervals_first,
@@ -2738,7 +2983,7 @@ df_coefplot %>%
   geom_point(size = 3.25, position = position_dodge(width = 0.7)) +
   geom_errorbarh(aes(xmin = lower, xmax = upper), position = position_dodge(width = 0.7)) +
   geom_vline(xintercept = 0, lty = 2, color = '#880d1e', linewidth = 0.05) +
-  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-1.75, 1.75) +
+  xlab('Log-Odds Effect for 6-Week Waitlist Mortality') + xlim(-2, 2) +
   scale_y_discrete(labels=c('Durable LVAD', expression('Sodium'^'b'), 'Albumin', 
                             'Log BNP, NT-proBNP', 
                             'Log BNP, Regular BNP', 
