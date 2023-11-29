@@ -78,7 +78,7 @@ Updated 10/15/2023: Minor change to legend of AUC curves.
 
 Updated 10/22/2023: Sensitivity and specificity code revised.
 
-Updated 11/28/2023: Robust standard errors clustered by patient are now used. Time-dependent AUC curves added. Some calculations use only the first interval.
+Updated 11/28/2023: Robust standard errors clustered by patient are now used. Time-dependent AUC curves added. Some calculations use only the first interval. 
 
 
 ### 5. results_continuous.Rmd
