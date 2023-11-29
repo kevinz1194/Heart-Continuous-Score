@@ -14,15 +14,15 @@ authors: Kevin Zhang
 <!-- 5. Obtain machine learning model results (Line 1771) -->
 <!-- 6. Make predictions on test dataset (Line 1833) -->
 <!-- 7. Create AUC curves (Line 1894) -->
-<!-- 8. Variable importance plots from gradient-boosted models (Line 2094) -->
-<!-- 9. Create calibration plot in test dataset (Line 2155) -->
-<!-- 10. Create facet plot of 50 point score at initial listing (Line 2264) -->
-<!-- 11. Examine gender and race differences in prediction (Line 2294) -->
-<!-- 12. Check for informative censoring (Line 2647) -->
-<!-- 13. Examine a model with center random effects (Line 2680) -->
-<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2701) -->
-<!-- 15. Examine model performance based on temporal split (Line 2747) -->
-<!-- 16. Coefficient plot for 2 week outcome (Line 2815) -->
+<!-- 8. Variable importance plots from gradient-boosted models (Line 2168) -->
+<!-- 9. Create calibration plot in test dataset (Line 2229) -->
+<!-- 10. Create facet plot of 50 point score at initial listing (Line 2338) -->
+<!-- 11. Examine gender and race differences in prediction (Line 2368) -->
+<!-- 12. Check for informative censoring (Line 2721) -->
+<!-- 13. Examine a model with center random effects (Line 2754) -->
+<!-- 14. Examine sensitivity and specificity at certain cut points (Line 2775) -->
+<!-- 15. Examine model performance based on temporal split (Line 2821) -->
+<!-- 16. Coefficient plot for 2 week outcome (Line 2889) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -1933,7 +1933,6 @@ legend('bottomright', xpd = T,
 ```
 
 
-
 ### ROC curve for models with all memory variables (eFigure 3)
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8, results='hide'}
@@ -1990,6 +1989,9 @@ legend('bottomright', cex = 0.9, xpd = T,
 ```
 
 
+----------------------------
+
+
 ### Time-Dependent AUC Calculations
 
 ```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', results='hide'}
@@ -2006,7 +2008,7 @@ six_up<- vector(mode = "numeric")
 for (i in time_dependent_auc_six %>% pull(interval)) {
   roc_i <- df_intervals_test %>%
     filter(interval == i) %>%
-  roc(death6week, status_initial)
+  roc(death6week, status_initial, direction='>')
   
   roc_ci <- ci.auc(roc_i)
   
@@ -2044,7 +2046,7 @@ us_up<- vector(mode = "numeric")
 for (i in time_dependent_auc_us %>% pull(interval)) {
   roc_i <- df_intervals_test %>%
     filter(interval == i) %>%
-  roc(death6week, us_predict )
+  roc(death6week, us_predict)
   
   roc_ci <- ci.auc(roc_i)
   
@@ -2072,8 +2074,9 @@ time_dependent_auc_six %>%
   ggplot(aes(x = interval*14, y = auc, ymin = low, ymax = up, color = Score)) +
   geom_point() + 
   geom_line() + 
-  geom_errorbar(alpha = 0.2) + 
+  geom_errorbar(alpha = 0.3) + 
   geom_hline(yintercept = 0.5, color = 'gray') +
+  scale_x_continuous(breaks = seq(0, 300, 100)) +
   scale_color_manual(values = c('#a37c40','#880d1e', '#3f88c5')) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
@@ -2085,6 +2088,77 @@ time_dependent_auc_six %>%
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 13)) +
   labs(x = "Days on Waitlist", y = "AUC (6-Week Mortality)") 
+```
+
+
+### ROC curve for subset of models at specified intervals
+```{r, warning=F, echo=F, message=F, comment=NA, fig.align='center', fig.width=7, fig.height=6}
+df_intervals_18 <- df_intervals_test %>% filter(interval == 18)
+
+df_intervals_french_18 <- df_intervals_test_model_french_new %>% 
+  select(PX_ID, interval, death6week)
+df_intervals_french_18 <- cbind(df_intervals_french_18, model_french_new_predict)
+colnames(df_intervals_french_18) <- c('PX_ID', 'interval', 'death6week', 'predict')
+df_intervals_french_18 <- df_intervals_french_18 %>% filter(interval == 18)
+
+df_intervals_us_18 <- df_intervals_test_model_final %>% 
+  select(PX_ID, interval, death6week)
+df_intervals_us_18 <- cbind(df_intervals_us_18, model_final_predict)
+colnames(df_intervals_us_18) <- c('PX_ID', 'interval', 'death6week', 'predict')
+df_intervals_us_18 <- df_intervals_us_18 %>% filter(interval == 18)
+
+
+# dev.new(width = 8, height = 8, noRStudioGD = T)
+par(xaxs='i')
+pROC::roc(data=df_intervals_18, response=death6week, predictor=status_initial, direction='>',
+          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
+          lwd=3, quiet=T, print.auc.y=0.35,
+          print.auc.cex = 1.2, 
+          legacy.axes=T)
+pROC::roc(df_intervals_french_18$death6week ~ df_intervals_french_18$predict, direction='<',
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.30, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
+pROC::roc(df_intervals_us_18$death6week ~ df_intervals_us_18$predict, direction='<',
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.25, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
+legend('bottomright', xpd = T, 
+      legend = c('6-Status', 'Current French-CRS', 'US-CRS'),
+       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
+
+
+
+
+df_intervals_20 <- df_intervals_test %>% filter(interval == 20)
+
+df_intervals_french_20 <- df_intervals_test_model_french_new %>% 
+  select(PX_ID, interval, death6week)
+df_intervals_french_20 <- cbind(df_intervals_french_20, model_french_new_predict)
+colnames(df_intervals_french_20) <- c('PX_ID', 'interval', 'death6week', 'predict')
+df_intervals_french_20 <- df_intervals_french_20 %>% filter(interval == 20)
+
+df_intervals_us_20 <- df_intervals_test_model_final %>% 
+  select(PX_ID, interval, death6week)
+df_intervals_us_20 <- cbind(df_intervals_us_20, model_final_predict)
+colnames(df_intervals_us_20) <- c('PX_ID', 'interval', 'death6week', 'predict')
+df_intervals_us_20 <- df_intervals_us_20 %>% filter(interval == 20)
+
+
+# dev.new(width = 8, height = 8, noRStudioGD = T)
+par(xaxs='i')
+pROC::roc(data=df_intervals_20, response=death6week, predictor=status_initial, direction='>',
+          plot=T, col='#880d1e', print.auc=T, ci=T, ci.type = 'no',
+          lwd=3, quiet=T, print.auc.y=0.35,
+          print.auc.cex = 1.2, 
+          legacy.axes=T)
+pROC::roc(df_intervals_french_20$death6week ~ df_intervals_french_20$predict, direction='<',
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.30, smooth=T, lwd=2.5, col='#a37c40', add=T, quiet=T, print.auc.cex = 1.2)
+pROC::roc(df_intervals_us_20$death6week ~ df_intervals_us_20$predict, direction='<',
+          plot=T, print.auc=T, ci=T, ci.type = 'no',
+          print.auc.y=0.25, smooth=T, lwd=2.5, col='#3f88c5', add=T, quiet=T, print.auc.cex = 1.2)
+legend('bottomright', xpd = T, 
+      legend = c('6-Status', 'Current French-CRS', 'US-CRS'),
+       col = c('#880d1e', '#a37c40', '#3f88c5'), lwd=2.5,  cex=1.1)
 ```
 
 
@@ -3002,4 +3076,40 @@ df_coefplot %>%
         axis.text.y = element_text(face='bold', size = 16, margin = margin(r=5)),
         legend.text = element_text(size = 18),
         legend.title = element_text(size = 18))  
+```
+
+
+## 2-week c-index
+```{r, echo=F, warning=F, message=F, comment=NA}
+library(risksetROC)
+model_french_2week <- glm(formula = as.formula(
+  death2week ~ 
+    short_MCS_French_new + log(bilirubin + 1) + eGFR + log(BNP + 1):BNP_NT_Pro), 
+  data = df_intervals[df_intervals$train_test == 'Train',], 
+  family = binomial)
+
+df_intervals$us_2week_predict <- predict(model_final_2week, df_intervals)
+df_intervals$french_2week_predict <- predict(model_french_2week, df_intervals)
+
+
+df_intervals_new <- subset(df_intervals, !is.na(df_intervals$us_2week_predict) &
+                         !is.na(df_intervals$french_2week_predict) &
+                         df_intervals$train_test == 'Test')
+risksetAUC(
+  Stime= df_intervals_new$interval_stop,
+  entry = df_intervals_new$interval_start,
+  status = df_intervals_new$death2week,
+  marker = df_intervals_new$french_2week_predict,
+  method = 'Cox',
+  tmax = 365*2,
+  plot = F)
+
+risksetAUC(
+  Stime= df_intervals_new$interval_stop,
+  entry = df_intervals_new$interval_start,
+  status = df_intervals_new$death2week,
+  marker = df_intervals_new$us_2week_predict,
+  method = 'Cox',
+  tmax = 365*2,
+  plot = F)
 ```
