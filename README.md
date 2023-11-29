@@ -80,6 +80,8 @@ Updated 10/22/2023: Sensitivity and specificity code revised.
 
 Updated 11/28/2023: Robust standard errors clustered by patient are now used. Time-dependent AUC curves added. Some calculations use only the first interval. 
 
+Updated 11/29/2023: Time-dependent AUC curves fixed, specific intervals added. Sensitivity analyses for 2-week is added.
+
 
 ### 5. results_continuous.Rmd
 Figures and discrimination, calibration from the full, continuous (no 14-day intervals) dataset. 
