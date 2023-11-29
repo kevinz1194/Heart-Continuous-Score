@@ -9,10 +9,10 @@ authors: Kevin Zhang
 
 
 <!-- 1. Set up continuous dataset (Line 31) -->
-<!-- 2. Comparison of training and testing datasets (Line 78) -->
-<!-- 3. Find missing % at listing (Line 267) -->
-<!-- 4. Impute values into unblocked dataset (Line 295) -->
-<!-- 5. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 407) -->
+<!-- 2. Comparison of training and testing datasets (Line 68) -->
+<!-- 3. Find missing % at listing (Line 257) -->
+<!-- 4. Impute values into unblocked dataset (Line 285) -->
+<!-- 5. Cox PH with US-CRS predictors on unblocked and generalized c-index (Line 397) -->
 
 
 ```{r, include=F, warning=F, echo=F, comment=NA}
@@ -34,16 +34,6 @@ Continuous dataset is obtained from Section 5 of *6week_death_data_prep.Rmd*.
 
 ```{r, echo=F, warning=F, comment=NA}
 load('./intervals_v17_continuous.RData')
-
-
-## Keep only relevant variables
-df <- df %>%
-  select(PX_ID, CenterId, t_start, t_stop, last_group, status,
-         systolicBP, PCWP, central_venous_pressure, cardiac_output, 
-         AST, creatinine, bilirubin, albumin, sodium, BNP, BNP_NT_Pro,
-         heart_rate, diastolicBP, PASP, PADP, hemoglobin, dialysis, peripheral_vascular, 
-         status, ECMO, BiVAD_no_discharge, temp_surg_LVAD, IABP, ECMO, 
-         death_flag, age, status_initial, LVAD, BiVAD, transplant, perc_LVAD)
 
 
 ## Add a train-test indicator
@@ -490,7 +480,6 @@ quantile(auc_list_six, probs = c(0.025, 0.975))
 ```
 
 ```{r, warning=F, message=F, comment=NA}
-set.seed(200)
 get_overall_french(df)
 
 auc_list_french <- vector(length = n_iterations)
@@ -504,7 +493,6 @@ quantile(auc_list_french, probs = c(0.025, 0.975))
 ```
 
 ```{r, warning=F, message=F, comment=NA}
-set.seed(200)
 get_overall_us(df)
 
 auc_list_us <- vector(length = n_iterations)
