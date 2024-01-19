@@ -21,7 +21,7 @@ if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
                pROC, survival, DescTools, rsample)
-knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
+knitr::opts_knit$set(root.dir = '~/US-CRS')
 ```
 
 
