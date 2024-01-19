@@ -30,7 +30,7 @@ rm(list=ls()); invisible(gc())
 if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, Hmisc, ggplot2, expss, haven, lubridate, knitr, cowplot)
-knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
+knitr::opts_knit$set(root.dir = '~/US-CRS')
 ```
 
 
