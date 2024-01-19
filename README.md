@@ -104,10 +104,10 @@ Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations f
 
 Updated 11/25/2023: Section with Harrell's c removed. Integrated AUC added.
 
-Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
-
 Updated 8/25/2023: IABP, durable and perc LVAD variables added.
 
 Updated 10/14/2023: Updated notes on Harrell's c, also draws an AUC curve. Generalized c-index added.
 
 Updated 10/27/2023: Name changed to results_continuous, bootstrapping and time-dependent AUC's added. 
+
+Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
