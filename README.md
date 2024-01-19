@@ -13,12 +13,12 @@ Creates 14-day interval (blocked) dataset from SRTR data, including 6-week morta
 
 Datasets required: 
 
-**status_changes_pubsaf2303.csv** <br />
-**cand_thor.sas7bdat** <br />
-**JustFormHRStat1.sas7bdat**  <br />
-**JustFormHRStat2.sas7bdat** <br />
-**JustFormHRStat3.sas7bdat**  <br />
-**JustFormHRStat4.sas7bdat** <br />
+**status_changes_pubsaf2303.csv** (helper dataset) <br />
+**cand_thor.sas7bdat** (SRTR dataset) <br />
+**JustFormHRStat1.sas7bdat** (SRTR dataset) <br />
+**JustFormHRStat2.sas7bdat** (SRTR dataset) <br />
+**JustFormHRStat3.sas7bdat** (SRTR dataset) <br />
+**JustFormHRStat4.sas7bdat** (SRTR dataset) <br />
 
 Updated 7/9/2023: Added.
 
@@ -31,6 +31,8 @@ Updated 8/14/2023: Added lower bound for sodium, and censoring date now uses the
 Updated 10/15/2023: Typo with calculation of short-term MCS is fixed, error with IV dosage changed, new loop for maximum time.
 
 Updated 11/24/2023: Imputation of bilirubin and albumin added.
+
+Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
 
 ### 2. elastic_net_model.R
@@ -82,6 +84,8 @@ Updated 11/28/2023: Robust standard errors clustered by patient are now used. Ti
 
 Updated 11/29/2023: Time-dependent AUC curves fixed, specific intervals added. Sensitivity analyses for 2-week is added.
 
+Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
+
 
 ### 5. results_continuous.Rmd
 Figures and discrimination, calibration from the full, continuous (no 14-day intervals) dataset. 
@@ -99,6 +103,8 @@ Updated 8/18/2023: Name changed, updated to work with new data. Cox PH model add
 Updated 8/22/2023: Added MCS components to Table 1, added c-index calculations for US-CRS model with hemodynamics.
 
 Updated 11/25/2023: Section with Harrell's c removed. Integrated AUC added.
+
+Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
 Updated 8/25/2023: IABP, durable and perc LVAD variables added.
 
