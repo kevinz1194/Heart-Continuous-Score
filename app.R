@@ -27,7 +27,7 @@ ui <- fluidPage(
 )
 
 
-load('C:/Users/Kevin (Work)/Desktop/US-CRS/model_final.RData')
+load('C:/Users/Kevin (Work)/Desktop/US-CRS/model_final2.RData')
 
 server <- function(input, output) {
   
