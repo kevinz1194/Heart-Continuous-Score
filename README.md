@@ -113,7 +113,3 @@ Updated 10/27/2023: Name changed to results_continuous, bootstrapping and time-d
 Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
 
-### 6. app.R (Under Construction) ###
-A preliminary Shiny app for calculating US-CRS score. Requires the final model from model_results.Rmd.
-
-Updated 2/12/2024: Added.
