@@ -1,33 +1,51 @@
 rm(list=ls())
 library(shiny)
+library(shinythemes)
+library(tidyverse)
 
 
 ui <- fluidPage(
-  titlePanel(''),
+  theme = shinytheme('cerulean'),
+  titlePanel('The US-CRS Score for Heart Transplant Allocation'),
   sidebarLayout(
+
     sidebarPanel(
-      numericInput('albumin', 'Albumin value:', value = 0),
-      numericInput('bilirubin', 'Bilirubin value:', value = 0),
-      numericInput('eGFR', 'eGFR value:', value = 0),
-      numericInput('sodium', 'Sodium value:', value = 0),
+      h4('Patient Characteristics'),
+      
+      
+      radioButtons('sex', 'Gender', 
+                   choices = c('Female' = 1, 'Male' = 0), selected = 1),
+      numericInput('age', 'Age (years):', value = 50),
+      
+      numericInput('albumin', 'Albumin (g/dL):', value = 4),
+      numericInput('bilirubin', 'Bilirubin (mg/dL):', value = 1),
+      numericInput('creatinine', 'Creatinine (mEq/L):', value = 1),
+      numericInput('sodium', 'Sodium (mEq/L):', value = 145),
+      
       radioButtons('lvad', 'Left ventricular assist device?', 
                    choices = c('Yes' = 1, 'No' = 0), selected = 0),
       radioButtons('short_term_MCS', 'Ever on short-term mechanical circulatory support?', 
                    choices = c('Yes' = 1, 'No' = 0), selected = 0),
       radioButtons('BNP_type', 'Type of BNP', 
                    choices = c('NT-pro BNP' = 1, 'Regular BNP' = 0), selected = 0),
-      numericInput('BNP_value', 'BNP value', value = 0),
+      numericInput('BNP_value', 'BNP (pg/mL)', value = 100),
       actionButton('calculateBtn', 'Calculate')
     ),
     mainPanel(
-      h3(textOutput('result'), 
-         style = 'text-align:center; font-size:20px;')
+      h4(textOutput('result'), 
+         style = 'text-align:center; font-size:20px;'),
+
+      plotOutput(outputId = 'histogram'),
+
+      h5('Kevin C. Zhang, MS, William F. Parker, MD, PhD, et al.'),
+      h6('Predicting Death without Transplantation in Adult Heart Transplant Candidates:
+         Developing and Validating the US Candidate Risk Score, JAMA, Feb. 2024')
     )
   )
 )
 
 
-load('C:/Users/Kevin (Work)/Desktop/US-CRS/model_final2.RData')
+load('model_final2.RData')
 
 server <- function(input, output) {
   
@@ -35,12 +53,23 @@ server <- function(input, output) {
     
     df <- data.frame('albumin' = input$albumin,
                      'bilirubin' = input$bilirubin,
-                     'eGFR' = input$eGFR,
+                     'sex' = input$sex,
+                     'age' = input$age,
+                     'creatinine' = input$creatinine,
                      'sodium' = input$sodium,
                      'LVAD' = as.factor(as.character(input$lvad)),
                      'short_MCS_ever' = as.numeric(input$short_term_MCS),
                      'BNP_NT_Pro' = as.factor(as.character(input$BNP_type)),
                      'BNP' = input$BNP_value)
+    
+    df <- df %>%
+      mutate(eGFR = case_when(
+        
+        sex == '1' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.7), 1)^(-0.241)) *
+          (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age) * 1.012,
+        
+        sex == '0' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
+          (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age)))
     
     response <- predict(model_final, df, type='response')
     
@@ -103,6 +132,34 @@ server <- function(input, output) {
     
     output$result <- renderText({
       paste("US-CRS Score: ", score)})
+    
+    output$histogram <- renderPlot({
+      df_plot <- data.frame('value' = seq(0,50, by=1))
+      df_plot <- data.frame('value'= unlist(rep(df_plot, 10)))
+      df_plot$color <- 0
+      
+      df_plot$color[df_plot$value >= (score - (score%%5) + 1) &
+                      df_plot$value <= (score + 5 - (score%%5))] <- 1
+
+      ggplot(df_plot, aes(x = value, fill = as.factor(color))) +
+        geom_histogram(breaks = seq(0, 50, by = 5)) +
+        xlim(c(0,50)) +
+        scale_fill_manual(values = c('white', '#880d1e')) +
+        scale_x_continuous(breaks = seq(0, 50, by = 5)) +
+        labs(x = 'US-CRS Score',
+             y =  '') +
+        theme_bw() +
+        theme(legend.position = 'none') +
+        theme(panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.text.y = element_blank(),
+              axis.text.x = element_text(size = 14),
+              axis.title.x = element_text(size = 16,
+                                          margin = margin(t = 15, r = 0, 
+                                                          b = 0, l = 0)))
+      
+    })
   })
 }
 
