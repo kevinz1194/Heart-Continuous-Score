@@ -1,4 +1,4 @@
-Code files corresponding to the manuscript *Predicting Death without Transplantation in Adult Heart Transplant Candidates: Developing and Validating the US Candidate Risk Score (US-CRS)* by Zhang, Narang, et al. <br />
+Code files corresponding to the manuscript *Development and Validation of a Risk Score Predicting Death Without Transplant in Adult Heart Transplant Candidates* by Zhang, Narang, et al. <br />
 
 All files are written and tested using R 4.3.1.
 
