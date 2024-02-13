@@ -1,4 +1,4 @@
-Code files corresponding to the manuscript *Development and Validation of a Risk Score Predicting Death Without Transplant in Adult Heart Transplant Candidates* by Zhang, Narang, et al. <br />
+Code files corresponding to the manuscript *Development and Validation of a Risk Score Predicting Death Without Transplant in Adult Heart Transplant Candidates* by Zhang, Narang, et al, available at: https://jamanetwork.com/journals/jama/article-abstract/2814884. <br />
 
 All files are written and tested using R 4.3.1.
 
