@@ -22,7 +22,7 @@ ui <- fluidPage(
                   step = 0.05, value = 4.5, ticks = F),
       sliderInput('bilirubin', 'Bilirubin (mg/dL):', min = 0.5, max = 10, 
                   step = 0.05, value = 0.5, ticks = F),
-      sliderInput('creatinine', 'Serum Creatinine (mg/dL):', min = 0.1, max = 5,
+      sliderInput('creatinine', 'Serum Creatinine (mg/dL):', min = 1.0, max = 5,
                   step = 0.05, value = 1.5, ticks = F),
       checkboxInput('dialysis', 'Check this box if candidate is on dialysis',
                     value = F),
