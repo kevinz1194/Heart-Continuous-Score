@@ -1,6 +1,7 @@
 rm(list=ls())
 library(shiny)
 library(shinythemes)
+library(shinyWidgets)
 library(tidyverse)
 
 
@@ -17,13 +18,15 @@ ui <- fluidPage(
                    choices = c('Female' = 1, 'Male' = 0), selected = 1),
       numericInput('age', 'Age (years):', value = 50),
       
-      sliderInput('albumin', 'Albumin (g/dL):', min = 1, max = 7.5, 
+      sliderInput('albumin', 'Albumin (g/dL):', min = 1, max = 5.5, 
                   step = 0.05, value = 4.5, ticks = F),
-      sliderInput('bilirubin', 'Bilirubin (mg/dL):', min = 0.1, max = 2, 
+      sliderInput('bilirubin', 'Bilirubin (mg/dL):', min = 0.5, max = 10, 
                   step = 0.05, value = 0.5, ticks = F),
       sliderInput('creatinine', 'Serum Creatinine (mg/dL):', min = 0.1, max = 5,
                   step = 0.05, value = 1.5, ticks = F),
-      sliderInput('sodium', 'Sodium (mEq/L):', min = 120, max = 170,
+      checkboxInput('dialysis', 'Check this box if candidate is on dialysis',
+                    value = F),
+      sliderInput('sodium', 'Sodium (mEq/L):', min = 110, max = 145,
                   step = 1, value = 140, ticks = F),
       radioButtons('lvad', 'Left ventricular assist device?', 
                    choices = c('Yes' = 1, 'No' = 0), selected = 0),
@@ -31,8 +34,8 @@ ui <- fluidPage(
                    choices = c('Yes' = 1, 'No' = 0), selected = 0),
       radioButtons('BNP_type', 'Type of BNP', 
                    choices = c('NT-pro BNP' = 1, 'Regular BNP' = 0), selected = 0),
-      sliderInput('BNP_value', 'BNP (pg/mL)', min = 0, max = 200,
-                  step = 1, value = 5, ticks = F)
+      sliderInput('BNP_value', 'Natural Log of BNP (pg/mL)', min = -1, max = 10,
+                  step = 0.1, value = 1.5, ticks = F)
     ),
     mainPanel(
       h2(textOutput('result'), 
@@ -49,7 +52,7 @@ ui <- fluidPage(
       HTML('<br>'),
       
       h4('Predicting Death without Transplantation in Adult Heart Transplant Candidates:
-         Developing and Validating the US Candidate Risk Score, JAMA, Feb. 2024'),
+         Developing and Validating the US Candidate Risk Score, JAMA, Feb. 2024.'),
       h5('Kevin C. Zhang, MS, William F. Parker, MD, PhD, et al.')
     )
   )
@@ -71,7 +74,8 @@ server <- function(input, output) {
                      'LVAD' = as.factor(as.character(input$lvad)),
                      'short_MCS_ever' = as.numeric(input$short_term_MCS),
                      'BNP_NT_Pro' = as.factor(as.character(input$BNP_type)),
-                     'BNP' = input$BNP_value)
+                     'BNP' = as.numeric(exp(input$BNP_value)),
+                     'dialysis' = as.numeric(input$dialysis))
     
     df <- df %>%
       mutate(eGFR = case_when(
@@ -81,6 +85,8 @@ server <- function(input, output) {
         
         sex == '0' & !is.na(creatinine) ~ 142 * (pmin((creatinine / 0.9), 1)^(-0.302)) *
           (pmax((creatinine / 0.7), 1)^(-1.2)) * 0.9938^(age)))
+    
+    df$eGFR[df$dialysis == 1] <- 0
     
     response <- predict(model_final, df, type='response')
     
