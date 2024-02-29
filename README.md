@@ -6,6 +6,8 @@ Kevin Lazenby (coauthor and collaborator) performed a reproducibility check on 1
 
 Scientific Registry of Transplant Recipient (SRTR) data files are required to run these files, which are restricted under a data usage agreement. A premade dataset generated from SRTR data (**status_changes_pubsaf2303.csv**) is also used; details provided at https://github.com/kevinlazenby/heart_data_pipeline.
 
+An app for calculating US-CRS scores is available at https://kevinz1194.shinyapps.io/US-CRS_Score/. The corresponding code file is app.R. 
+
 Files should be run in this order:
 
 ### 1. 6week_death_data_prep.Rmd
