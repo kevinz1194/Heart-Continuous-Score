@@ -155,7 +155,7 @@ server <- function(input, output) {
       ggplot(df_plot, aes(x = value, fill = as.factor(color))) +
         geom_histogram(breaks = seq(0, 50, by = 5)) +
         xlim(c(0,50)) +
-        scale_fill_manual(values = c('white', '#880d1e')) +
+        scale_fill_manual(values = c('white', '#3f88c5')) +
         scale_x_continuous(breaks = seq(0, 50, by = 5)) +
         labs(x = 'US-CRS Score',
              y =  '') +
