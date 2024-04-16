@@ -9,10 +9,10 @@ library(parallel)
 library(caret)
 
 
-load('./intervals_v17_impute_6wkdeath.RData')
+load('./intervals_v18_impute_6wkdeath.RData')
 
 factor_vars <- c('diagnosis', 'diabetes', 'dialysis', 'IV_inotropes', 'dobutamine', 
-                 'dopamine', 'epinephrine', 'milrinone', 'IABP', 'ECMO', 'BiVAD', 'LVAD', 'RVAD',
+                 'dopamine', 'epinephrine', 'milrinone', 'IABP', 'ECMO', 'BiVAD', 'durable_LVAD', 'RVAD',
                  'MCSD_complication', 'life_arrhythmia', 'BiVAD_no_discharge', 
                  'temp_surg_LVAD', 'other_durable_MCSD', 'MCSD_malfunction', 'v_tach_fib', 
                  'perc_LVAD', 'MCSD_hemolysis', 'MCSD_rhf', 'MCSD_device_infx', 
@@ -91,7 +91,7 @@ mat_train_all <- data.frame(cbind(df_intervals[df_intervals$train_test == 'Train
                               interval_dummies_train, 
                               df_intervals[df_intervals$train_test == 'Train', ]$IABP,
                               df_intervals[df_intervals$train_test == 'Train', ]$ECMO, 
-                              df_intervals[df_intervals$train_test == 'Train', ]$LVAD, 
+                              df_intervals[df_intervals$train_test == 'Train', ]$durable_LVAD, 
                               df_intervals[df_intervals$train_test == 'Train', ]$MCSD_complication, 
                               df_intervals[df_intervals$train_test == 'Train', ]$systolicBP,
                               df_intervals[df_intervals$train_test == 'Train', ]$diastolicBP, 
@@ -173,7 +173,7 @@ names(mat_train_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'In
                           'Diag_Ischemic', 'Diag_Other',
                           'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular', 
                           'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High',
-                          'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
+                          'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP',
                           'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                           'Central_Venous_Pressure', 'Arterial_Lactate', 'PCWP', 
                           'Hemoglobin', 'Albumin',
@@ -213,7 +213,7 @@ DMat_train_all <- xgb.DMatrix(data =
                                                   Diag_Ischemic + Diag_Other + Diag_Retransplant + 
                                                   Diag_Restricted + Diag_Valvular + Dobutamine_High + 
                                                   Dopamine_High + Epinephrine_High + Milrinone_High + 
-                                                  IABP + ECMO + LVAD + MCSD_Complication + SystolicBP +
+                                                  IABP + ECMO + Durable_LVAD + MCSD_Complication + SystolicBP +
                                                   DiastolicBP + PASP + PADP + Heart_Rate10 + 
                                                   Cardiac_Output + Central_Venous_Pressure + Arterial_Lactate +
                                                   Hemoglobin + Albumin + Bilirubin + eGFR + 
