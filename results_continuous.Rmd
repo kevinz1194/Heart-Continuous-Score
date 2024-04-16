@@ -21,7 +21,7 @@ if (!require('pacman')) {install.packages('pacman')}
 library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
                pROC, survival, DescTools, rsample)
-knitr::opts_knit$set(root.dir = '~/US-CRS')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -33,7 +33,7 @@ Continuous dataset is obtained from Section 5 of *6week_death_data_prep.Rmd*.
 
 
 ```{r, echo=F, warning=F, comment=NA}
-load('./intervals_v17_continuous.RData')
+load('./intervals_v18_continuous.RData')
 
 
 ## Add a train-test indicator
@@ -97,7 +97,7 @@ df_table1 <- df %>%
          systolicBP, diastolicBP, cardiac_output, 
          CAN_GENDER, CAN_RACE, dialysis,
          ECMO, temp_surg_LVAD, BiVAD_no_discharge,
-         IABP, LVAD, perc_LVAD) %>%
+         IABP, durable_LVAD, perc_LVAD) %>%
   group_by(PX_ID) %>%
   filter(row_number() == 1) %>%
   mutate(age = as.numeric(age))
@@ -144,13 +144,13 @@ df_table1 <- df_table1[ ,c('train_test', 'age', 'CAN_GENDER', 'race',
                            'PASP', 'PADP', 'systolicBP', 'diastolicBP',
                            'central_venous_pressure', 'cpo', 'papi',
                            'ECMO', 'temp_surg_LVAD', 'BiVAD_no_discharge',
-                           'IABP', 'LVAD', 'perc_LVAD')]
+                           'IABP', 'durable_LVAD', 'perc_LVAD')]
 df_table1$BNP_NT_Pro <- as.factor(df_table1$BNP_NT_Pro)
 df_table1$ECMO <- as.factor(df_table1$ECMO)
 df_table1$temp_surg_LVAD <- as.factor(df_table1$temp_surg_LVAD)
 df_table1$BiVAD_no_discharge <- as.factor(df_table1$BiVAD_no_discharge)
 df_table1$IABP <- as.factor(df_table1$IABP)
-df_table1$LVAD <- as.factor(df_table1$LVAD)
+df_table1$durable_LVAD <- as.factor(df_table1$durable_LVAD)
 df_table1$perc_LVAD <- as.factor(df_table1$perc_LVAD)
 
 
@@ -181,7 +181,7 @@ df_table1 %>%
                         temp_surg_LVAD ~ 'Temporary Surgical LVAD, No. (%)',
                         BiVAD_no_discharge ~ 'BiVAD, No Discharge, No. (%)',
                         IABP ~ 'IABP, No. (%)',
-                        LVAD ~ 'Durable LVAD, No. (%)',
+                        durable_LVAD ~ 'Durable LVAD, No. (%)',
                         perc_LVAD ~ 'Percutaneous LVAD, No. (%)')) %>%
   modify_header(label = "**Variable**") %>%
   bold_labels()
@@ -212,7 +212,7 @@ df_table1 %>%
                         temp_surg_LVAD ~ 'Temporary Surgical LVAD, No. (%)',
                         BiVAD_no_discharge ~ 'BiVAD, No Discharge, No. (%)',
                         IABP ~ 'IABP, No. (%)',
-                        LVAD ~ 'Durable LVAD, No. (%)',
+                        durable_LVAD ~ 'Durable LVAD, No. (%)',
                         perc_LVAD ~ 'Percutaneous LVAD, No. (%)')) %>%
   modify_header(label = "**Variable**") %>%
   bold_labels()
@@ -244,7 +244,7 @@ df_table1 %>%
                         temp_surg_LVAD ~ 'Temporary Surgical LVAD, No. (%)',
                         BiVAD_no_discharge ~ 'BiVAD, No Discharge, No. (%)',
                         IABP ~ 'IABP, No. (%)',
-                        LVAD ~ 'Durable LVAD, No. (%)',
+                        durable_LVAD ~ 'Durable LVAD, No. (%)',
                         perc_LVAD ~ 'Percutaneous LVAD, No. (%)')) %>%
   modify_header(label = "**Variable**") %>%
   bold_labels()
@@ -303,27 +303,27 @@ df$BNP[is.na(df$BNP) & df$BNP_NT_Pro == '1'] <-
   median(df$BNP[df$BNP_NT_Pro == '1'], na.rm=T)
 
 df <- df %>%
-  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD == '1'),  2.5*bsa, cardiac_output)) %>%
-  mutate(cardiac_output = ifelse((is.na(cardiac_output) & LVAD != '1'),  2.2*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & durable_LVAD == '1'),  2.5*bsa, cardiac_output)) %>%
+  mutate(cardiac_output = ifelse((is.na(cardiac_output) & durable_LVAD != '1'),  2.2*bsa, cardiac_output)) %>%
   select(-c(bsa))
 
 
-df$central_venous_pressure[is.na(df$central_venous_pressure) & df$LVAD == '1'] <- 10
-df$PASP[is.na(df$PASP) & df$LVAD == '1'] <- 35
-df$PADP[is.na(df$PADP) & df$LVAD == '1'] <- 15
-df$PCWP[is.na(df$PCWP) & df$LVAD == '1'] <- 15
-df$systolicBP[is.na(df$systolicBP) & df$LVAD == '1'] <- 100
-df$diastolicBP[is.na(df$diastolicBP) & df$LVAD == '1'] <- 80
-df$heart_rate[is.na(df$heart_rate) & df$LVAD == '1'] <- 8.5
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$durable_LVAD == '1'] <- 10
+df$PASP[is.na(df$PASP) & df$durable_LVAD == '1'] <- 35
+df$PADP[is.na(df$PADP) & df$durable_LVAD == '1'] <- 15
+df$PCWP[is.na(df$PCWP) & df$durable_LVAD == '1'] <- 15
+df$systolicBP[is.na(df$systolicBP) & df$durable_LVAD == '1'] <- 100
+df$diastolicBP[is.na(df$diastolicBP) & df$durable_LVAD == '1'] <- 80
+df$heart_rate[is.na(df$heart_rate) & df$durable_LVAD == '1'] <- 8.5
 
 
-df$central_venous_pressure[is.na(df$central_venous_pressure) & df$LVAD != '1'] <- 12
-df$PASP[is.na(df$PASP) & df$LVAD != '1'] <- 38
-df$PADP[is.na(df$PADP) & df$LVAD != '1'] <- 18
-df$PCWP[is.na(df$PCWP) & df$LVAD != '1'] <- 18
-df$systolicBP[is.na(df$systolicBP) & df$LVAD != '1'] <- 110
-df$diastolicBP[is.na(df$diastolicBP) & df$LVAD != '1'] <- 80
-df$heart_rate[is.na(df$heart_rate) & df$LVAD != '1'] <- 8.5
+df$central_venous_pressure[is.na(df$central_venous_pressure) & df$durable_LVAD != '1'] <- 12
+df$PASP[is.na(df$PASP) & df$durable_LVAD != '1'] <- 38
+df$PADP[is.na(df$PADP) & df$durable_LVAD != '1'] <- 18
+df$PCWP[is.na(df$PCWP) & df$durable_LVAD != '1'] <- 18
+df$systolicBP[is.na(df$systolicBP) & df$durable_LVAD != '1'] <- 110
+df$diastolicBP[is.na(df$diastolicBP) & df$durable_LVAD != '1'] <- 80
+df$heart_rate[is.na(df$heart_rate) & df$durable_LVAD != '1'] <- 8.5
 ```
 
 
@@ -375,7 +375,7 @@ df$eGFR[is.na(df$eGFR)] <- 100
 df$papi[df$central_venous_pressure == 0] <- 1
 df$papi[df$papi < 1 & !is.na(df$papi)] <- 1
 
-df$LVAD <- as.factor(df$LVAD)
+df$durable_LVAD <- as.factor(df$durable_LVAD)
 
 
 ## Remove 0-time blocks
@@ -405,7 +405,7 @@ df$BNP_NT_Pro <- as.factor(df$BNP_NT_Pro)
 
 ## Basic Cox model
 model_us <- coxph(Surv(t_start, t_stop, death) ~ albumin + log(bilirubin + 1) + 
-        eGFR + sodium + (log(BNP + 1):BNP_NT_Pro) + LVAD + short_MCS_ever, 
+        eGFR + sodium + (log(BNP + 1):BNP_NT_Pro) + durable_LVAD + short_MCS_ever, 
       data = df[df$train_test == 'Train',])
 
 df$us_predict <- predict(model_final, df)
@@ -504,3 +504,137 @@ for (i in 1:n_iterations) {
 
 quantile(auc_list_us, probs = c(0.025, 0.975))
 ```
+
+
+
+### C-index for elastic net and xgboost (run separately since risksetROC may conflict with tidyverse select)
+```{r, warning=F, message=F, comment=NA}
+load('./Models/model_elastic_mem_6wk.RData')
+load('./Models/model_xgboost_mem_final.RData')
+
+df$BNP_NT_Pro <- as.factor(df$BNP_NT_Pro)
+
+
+### Remake memory vars
+df <- df %>%
+  group_by(PX_ID) %>%
+  
+  mutate(IV_inotropes_ever = case_when(IV_inotropes == '1' ~ '1', TRUE ~ NA_character_),
+         IABP_ever = case_when(IABP == '1' ~ '1', TRUE ~ NA_character_),
+         ECMO_ever = case_when(ECMO == '1' ~ '1', TRUE ~ NA_character_),
+         BiVAD_ever = case_when(BiVAD == '1' ~ '1', TRUE ~ NA_character_),
+         LVAD_ever = case_when(durable_LVAD == '1' ~ '1', TRUE ~ NA_character_),
+         RVAD_ever = case_when(RVAD == '1' ~ '1', TRUE ~ NA_character_),
+         exception_ever = case_when(exception == '1' ~ '1', TRUE ~ NA_character_),
+         temp_surg_ever = case_when(temp_surg_LVAD == '1' ~ '1', TRUE ~ NA_character_),
+         BiVAD_no_discharge_ever = case_when(BiVAD_no_discharge == '1' ~ '1', TRUE ~ NA_character_)) %>%
+  
+  fill(ECMO_ever, .direction = 'down') %>%
+  fill(BiVAD_ever, .direction = 'down') %>%
+  fill(LVAD_ever, .direction = 'down') %>%
+  fill(RVAD_ever, .direction = 'down') %>%
+  fill(exception_ever, .direction = 'down') %>%
+  fill(temp_surg_ever, .direction = 'down') %>%
+  fill(BiVAD_no_discharge_ever, .direction = 'down') %>%
+
+  mutate(IV_inotropes_ever = case_when(is.na(IV_inotropes_ever) ~ '0', TRUE ~ IV_inotropes_ever),
+         IABP_ever = case_when(is.na(IABP_ever) ~ '0', TRUE ~ IABP_ever),
+         ECMO_ever = case_when(is.na(ECMO_ever) ~ '0', TRUE ~ ECMO_ever),
+         BiVAD_ever = case_when(is.na(BiVAD_ever) ~ '0', TRUE ~ BiVAD_ever),
+         LVAD_ever = case_when(is.na(LVAD_ever) ~ '0', TRUE ~ LVAD_ever),
+         RVAD_ever = case_when(is.na(RVAD_ever) ~ '0', TRUE ~ RVAD_ever),
+         exception_ever = case_when(is.na(exception_ever) ~ '0', TRUE ~ exception_ever),
+         temp_surg_ever = case_when(is.na(temp_surg_ever) ~ '0', TRUE ~ temp_surg_ever),
+         BiVAD_no_discharge_ever = case_when(is.na(BiVAD_no_discharge_ever) ~ '0', TRUE ~ exception_ever))
+
+
+df <- df %>%
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_max = cummax(sodium),
+         creatinine_max = cummax(creatinine),
+         bilirubin_max = cummax(bilirubin),
+         albumin_max = cummax(albumin),
+         arterial_lactate_max = cummax(arterial_lactate),
+         BUN_max = cummax(BUN),
+         AST_max = cummax(AST),
+         INR_max = cummax(INR),
+         BNP_max = cummax(BNP),
+         LDH_max = cummax(LDH)) %>%
+  
+  fill(sodium_max, .direction = 'down') %>%
+  fill(creatinine_max, .direction = 'down') %>%
+  fill(bilirubin_max, .direction = 'down') %>%
+  fill(albumin_max, .direction = 'down') %>%
+  fill(arterial_lactate_max, .direction = 'down') %>%
+  fill(BUN_max, .direction = 'down') %>%
+  fill(AST_max, .direction = 'down') %>%
+  fill(INR_max, .direction = 'down') %>%
+  fill(BNP_max, .direction = 'down') %>%
+  fill(LDH_max, .direction = 'down') %>%
+  
+  mutate(sodium_min = cummin(sodium),
+         creatinine_min = cummin(creatinine),
+         bilirubin_min = cummin(bilirubin),
+         albumin_min = cummin(albumin),
+         arterial_lactate_min = cummin(arterial_lactate),
+         BUN_min = cummin(BUN),
+         AST_min = cummin(AST),
+         INR_min = cummin(INR),
+         BNP_min = cummin(BNP),
+         LDH_min = cummax(as.numeric(LDH))) %>%
+  
+  fill(sodium_min, .direction = 'down') %>%
+  fill(creatinine_min, .direction = 'down') %>%
+  fill(bilirubin_min, .direction = 'down') %>%
+  fill(albumin_min, .direction = 'down') %>%
+  fill(arterial_lactate_min, .direction = 'down') %>%
+  fill(BUN_min, .direction = 'down') %>%
+  fill(AST_min, .direction = 'down') %>%
+  fill(INR_min, .direction = 'down') %>%
+  fill(BNP_min, .direction = 'down') %>%
+  fill(LDH_min, .direction = 'down') 
+
+
+df <- df %>%
+  
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_lag = as.numeric(lag(sodium, n = 1)),
+         creatinine_lag = as.numeric(lag(creatinine, n = 1)),
+         bilirubin_lag = as.numeric(lag(bilirubin, n = 1)),
+         albumin_lag = as.numeric(lag(albumin, n = 1)),
+         arterial_lactate_lag = as.numeric(lag(arterial_lactate, n = 1)),
+         BUN_lag = as.numeric(lag(BUN, n = 1)),
+         AST_lag = as.numeric(lag(AST, n = 1)),
+         INR_lag = as.numeric(lag(INR, n = 1)),
+         BNP_lag = as.numeric(lag(BNP, n = 1)),
+         LDH_lag = as.numeric(lag(LDH, n = 1))) %>%
+  
+  mutate(sodium_slope = as.numeric(sodium) - sodium_lag,
+         creatinine_slope = as.numeric(creatinine) - creatinine_lag,
+         bilirubin_slope = as.numeric(bilirubin) - bilirubin_lag,
+         albumin_slope = as.numeric(albumin) - albumin_lag,
+         arterial_lactate_slope = as.numeric(arterial_lactate) - arterial_lactate_lag,
+         BUN_slope = as.numeric(BUN) - BUN_lag,
+         AST_slope = as.numeric(AST) - AST_lag,
+         INR_slope = as.numeric(INR) - INR_lag,
+         BNP_slope = as.numeric(BNP) - BNP_lag,
+         LDH_slope = as.numeric(LDH) - LDH_lag)
+
+
+df <- df %>%
+  group_by(PX_ID) %>%
+  
+  mutate(sodium_slope = case_when(is.na(sodium_slope) ~ 0, TRUE ~ sodium_slope),
+         creatinine_slope = case_when(is.na(creatinine_slope) ~ 0, TRUE ~ creatinine_slope),
+         bilirubin_slope = case_when(is.na(bilirubin_slope) ~ 0, TRUE ~ bilirubin_slope),
+         albumin_slope = case_when(is.na(albumin_slope) ~ 0, TRUE ~ albumin_slope),
+         arterial_lactate_slope = case_when(is.na(arterial_lactate_slope) ~ 0, TRUE ~ arterial_lactate_slope),
+         BUN_slope = case_when(is.na(BUN_slope) ~ 0, TRUE ~ BUN_slope),
+         AST_slope = case_when(is.na(AST_slope) ~ 0, TRUE ~ AST_slope),
+         INR_slope = case_when(is.na(INR_slope) ~ 0, TRUE ~ INR_slope),
+         BNP_slope = case_when(is.na(BNP_slope) ~ 0, TRUE ~ BNP_slope),
+         LDH_slope = case_when(is.na(LDH_slope) ~ 0, TRUE ~ LDH_slope)) 
+```
+
