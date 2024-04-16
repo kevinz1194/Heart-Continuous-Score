@@ -38,6 +38,7 @@ Updated 1/19/2024: One-line change to directory so that it is clear that it shou
 
 Updated 4/16/2024: Reworked definition of durable LVAD.
 
+
 ### 2. elastic_net_model.R
 Sample iteration of elastic net models with parameter tuning on alpha and lambda. Requires large amount of computational resources. Optional. Estimated runtime of several hours on a high-memory node.
 
@@ -46,6 +47,8 @@ Updated 7/4/2023: Added.
 Updated 8/11/2023: Models add NT-proBNP.
 
 Updated 10/15/2023: Dataset version number corrected.
+
+Updated 4/16/2024: Reworked definition of durable LVAD.
 
 
 ### 3. xgboost_mem_vars_model.R
@@ -56,6 +59,8 @@ Updated 7/4/2023: Added.
 Updated 8/11/2023: Models add NT-proBNP.
 
 Updated 10/15/2023: Dataset version number corrected.
+
+Updated 4/16/2024: Reworked definition of durable LVAD.
 
 
 ### 4. model_results.Rmd
@@ -89,6 +94,8 @@ Updated 11/29/2023: Time-dependent AUC curves fixed, specific intervals added. S
 
 Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
+Updated 4/16/2024: Reworked definition of durable LVAD.
+
 
 ### 5. results_continuous.Rmd
 Figures and discrimination, calibration from the full, continuous (no 14-day intervals) dataset. 
@@ -115,4 +122,4 @@ Updated 10/27/2023: Name changed to results_continuous, bootstrapping and time-d
 
 Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
-
+Updated 4/16/2024: Reworked definition of durable LVAD.
