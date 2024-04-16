@@ -36,6 +36,7 @@ Updated 11/24/2023: Imputation of bilirubin and albumin added.
 
 Updated 1/19/2024: One-line change to directory so that it is clear that it should be adjusted based on user's file location. 
 
+Updated 4/16/2024: Reworked definition of durable LVAD.
 
 ### 2. elastic_net_model.R
 Sample iteration of elastic net models with parameter tuning on alpha and lambda. Requires large amount of computational resources. Optional. Estimated runtime of several hours on a high-memory node.
