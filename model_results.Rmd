@@ -32,7 +32,7 @@ library(pacman)
 pacman::p_load(tidyverse, splines, knitr, kableExtra, glmnet, caret, gtsummary, 
                pROC, xgboost, survival, DescTools, cowplot, lme4,  
                lmtest, sandwich, rsample)
-knitr::opts_knit$set(root.dir = '~/US-CRS')
+knitr::opts_knit$set(root.dir = 'C:/Users/Kevin (Work)/Desktop/US-CRS')
 ```
 
 
@@ -44,12 +44,12 @@ Starting dataset requires the interval dataset from **6week_death_data_prep.Rmd*
 
 
 ```{r, warning=F, comment=NA}
-load('./intervals_v17_impute_6wkdeath.RData')
+load('./intervals_v18_impute_6wkdeath.RData')
 
 
 ### Convert variable types to correct types
 factor_vars <- c('diagnosis', 'diabetes', 'dialysis', 'IV_inotropes', 'dobutamine', 
-                 'dopamine', 'epinephrine', 'milrinone', 'IABP', 'ECMO', 'BiVAD', 'LVAD', 'RVAD',
+                 'dopamine', 'epinephrine', 'milrinone', 'IABP', 'ECMO', 'BiVAD', 'durable_LVAD', 'RVAD',
                  'MCSD_complication', 'life_arrhythmia', 'BiVAD_no_discharge', 
                  'temp_surg_LVAD', 'other_durable_MCSD', 'MCSD_malfunction', 'v_tach_fib', 
                  'perc_LVAD', 'MCSD_hemolysis', 'MCSD_rhf', 'MCSD_device_infx', 
@@ -176,7 +176,7 @@ mat_train <- data.frame(cbind(
   interval_dummies_train, 
   df_intervals[df_intervals$train_test == 'Train', ]$IABP,
   df_intervals[df_intervals$train_test == 'Train', ]$ECMO, 
-  df_intervals[df_intervals$train_test == 'Train', ]$LVAD, 
+  df_intervals[df_intervals$train_test == 'Train', ]$durable_LVAD, 
   df_intervals[df_intervals$train_test == 'Train', ]$MCSD_complication, 
   df_intervals[df_intervals$train_test == 'Train', ]$systolicBP,
   df_intervals[df_intervals$train_test == 'Train', ]$diastolicBP, 
@@ -260,7 +260,7 @@ names(mat_train) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Interv
                       'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                       'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                       'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                      'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
+                      'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                       'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                       'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
                       'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
@@ -274,7 +274,7 @@ names(mat_train_all) <-  c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'I
                            'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                            'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                            'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                           'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
+                           'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                            'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                            'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
                            'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
@@ -322,7 +322,7 @@ mat_test <- data.frame(cbind(
   interval_dummies_test, 
   df_intervals[df_intervals$train_test == 'Test', ]$IABP,
   df_intervals[df_intervals$train_test == 'Test', ]$ECMO, 
-  df_intervals[df_intervals$train_test == 'Test', ]$LVAD, 
+  df_intervals[df_intervals$train_test == 'Test', ]$durable_LVAD, 
   df_intervals[df_intervals$train_test == 'Test', ]$MCSD_complication, 
   df_intervals[df_intervals$train_test == 'Test', ]$systolicBP,
   df_intervals[df_intervals$train_test == 'Test', ]$diastolicBP, 
@@ -407,7 +407,7 @@ names(mat_test) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Interva
                       'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                       'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                       'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                      'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
+                      'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                       'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                       'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
                       'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
@@ -421,7 +421,7 @@ names(mat_test_all) <- c('Death', 'Interval_1', 'Interval_2', 'Interval_3', 'Int
                           'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                           'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                           'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                          'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
+                          'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP', 'DiastolicBP', 
                           'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                           'Arterial_Lactate', 'CPO', 'API', 'PAPI', 'Hemoglobin', 'Albumin', 'Bilirubin', 
                           'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro', 'BUN10', 'INR', 'Life_Arrhythmia',
@@ -450,7 +450,7 @@ mat_test_numeric <- mat_test_numeric[ , c('(Intercept)', 'Interval_1', 'Interval
                                           'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                                           'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                                           'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                                          'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
+                                          'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP',
                                           'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                           'Central_Venous_Pressure', 'Arterial_Lactate', 'CPO', 'API', 'PAPI',
                                           'Hemoglobin', 'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 
@@ -468,7 +468,7 @@ names(mat_test_all_numeric) <- c('Interval_1', 'Interval_2', 'Interval_3', 'Inte
                                  'Diag_Amyloid', 'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                                  'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                                  'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 
-                                 'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
+                                 'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP',
                                  'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                  'Central_Venous_Pressure', 'Arterial_Lactate', 'CPO', 'API', 'PAPI',
                                  'Hemoglobin', 'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 
@@ -498,7 +498,7 @@ mat_test_all_numeric <- mat_test_all_numeric[ , c('(Intercept)',
                                                   'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                                                   'Dobutamine_High', 'Dopamine_High', 
                                                   'Epinephrine_High', 'Milrinone_High',
-                                                  'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
+                                                  'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP',
                                                   'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 'Cardiac_Output',
                                                   'Central_Venous_Pressure', 'Arterial_Lactate', 'Hemoglobin',
                                                   'Albumin', 'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100',
@@ -545,7 +545,7 @@ DMat_test <- xgb.DMatrix(as.matrix(mat_test_numeric[,c('(Intercept)',
                                                        'Diag_Ischemic', 'Diag_Other', 'Diag_Retransplant',
                                                        'Diag_Restricted', 'Diag_Valvular', 'Dobutamine_High',
                                                        'Dopamine_High', 'Epinephrine_High', 'Milrinone_High',
-                                                       'IABP', 'ECMO', 'LVAD', 'MCSD_Complication', 'SystolicBP',
+                                                       'IABP', 'ECMO', 'Durable_LVAD', 'MCSD_Complication', 'SystolicBP',
                                                        'DiastolicBP', 'PASP', 'PADP', 'Heart_Rate10', 
                                                        'Cardiac_Output', 'Central_Venous_Pressure', 
                                                        'Arterial_Lactate', 'Hemoglobin',
@@ -566,7 +566,7 @@ colnames(DMat_test) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interval_3'
                          'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                          'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                          'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 'IABP1', 'ECMO1',
-                         'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
+                         'Durable_LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                          'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                          'Arterial_Lactate', 'Hemoglobin', 'Albumin',
                          'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro1', 'BUN10', 'INR',
@@ -580,7 +580,7 @@ colnames(DMat_test_all) <- c('(Intercept)', 'Interval_1', 'Interval_2', 'Interva
                              'Diag_Congenital', 'Diag_Hypertrophic', 'Diag_Ischemic',
                              'Diag_Other', 'Diag_Retransplant', 'Diag_Restricted', 'Diag_Valvular',
                              'Dobutamine_High', 'Dopamine_High', 'Epinephrine_High', 'Milrinone_High', 'IABP1', 'ECMO1',
-                             'LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
+                             'Durable_LVAD1', 'MCSD_Complication1', 'SystolicBP', 'DiastolicBP', 'PASP', 'PADP',
                              'Heart_Rate10', 'Cardiac_Output', 'Central_Venous_Pressure',
                              'Arterial_Lactate', 'Hemoglobin', 'Albumin',
                              'Bilirubin', 'eGFR', 'Sodium', 'AST100', 'BNP100', 'BNP_NT_Pro1', 'BUN10', 'INR',
@@ -708,7 +708,7 @@ model_PCWP <- glm(formula = as.formula(
   death6week ~ 
     PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -723,7 +723,7 @@ model_PCWP_results <- model_PCWP_results %>%
            PValue = round(PValue, 3))
 
 model_PCWP_results$Variable <- c('Intercept', 'PCWP', 'Albumin', 'Log Bilirubin+1', 
-                             'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                             'eGFR', 'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                              'Log BNP+1, Regular BNP',
                              'Log BNP+1, NT-proBNP')
 
@@ -736,7 +736,7 @@ model_PCWP_results %>%
 model_PCWP_noBNP <- glm(formula = as.formula(
   death6week ~ 
     PCWP + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -768,7 +768,7 @@ model_CPO_API <- glm(formula = as.formula(
   death6week ~ 
     cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -784,7 +784,7 @@ model_CPO_API_results <- model_CPO_API_results %>%
 
 model_CPO_API_results$Variable <- c('Intercept', 'CPO', 'API', 'Albumin', 
                                     'Log Bilirubin+1', 'eGFR', 
-                                    'Sodium', 'LVAD', 'Short MCS Ever', 
+                                    'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                                     'Log BNP+1, Regular BNP',
                                     'Log BNP+1, NT-proBNP')
 
@@ -797,7 +797,7 @@ model_CPO_API_results %>%
 model_CPO_API_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -811,7 +811,7 @@ model_CPO <- glm(formula = as.formula(
   death6week ~ 
     cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -826,7 +826,7 @@ model_CPO_results <- model_CPO_results %>%
            PValue = round(PValue, 3))
 
 model_CPO_results$Variable <- c('Intercept', 'CPO', 'Albumin', 'Log Bilirubin+1', 
-                                'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                'eGFR', 'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                                 'Log BNP+1, Regular BNP',
                                 'Log BNP+1, NT-proBNP')
 
@@ -838,7 +838,7 @@ model_CPO_results %>%
 model_CPO_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -846,7 +846,7 @@ model_CPO_noBNP <- glm(formula = as.formula(
 model_CPO_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -860,7 +860,7 @@ model_API <- glm(formula = as.formula(
   death6week ~ 
     api + albumin + log(bilirubin + 1) + eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -876,7 +876,7 @@ model_API_results <- model_API_results %>%
 
 model_API_results$Variable <- c('Intercept', 'API', 'Albumin', 
                                 'Log Bilirubin+1', 'eGFR', 'Sodium',                          
-                                'LVAD', 'Short MCS Ever',
+                                'Durable LVAD', 'Short MCS Ever',
                                 'Log BNP+1, Regular BNP',
                                 'Log BNP+1, NT-proBNP')
 
@@ -889,7 +889,7 @@ model_API_results %>%
 model_API_noBNP <- glm(formula = as.formula(
   death6week ~ 
     api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -921,7 +921,7 @@ model_PAPI_CPO <- glm(formula = as.formula(
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -937,7 +937,7 @@ model_PAPI_CPO_results <- model_PAPI_CPO_results %>%
 
 model_PAPI_CPO_results$Variable <- c('Intercept', 'CPO', 'PAPi', 
                                      'Albumin', 'Log Bilirubin+1',
-                                     'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                     'eGFR', 'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                                      'Log BNP+1, Regular BNP',
                                      'Log BNP+1, NT-proBNP')
 
@@ -951,7 +951,7 @@ model_PAPI_CPO_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -979,7 +979,7 @@ model_PAPI <- glm(formula = as.formula(
     papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) +
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -995,7 +995,7 @@ model_PAPI_results <- model_PAPI_results %>%
 
 model_PAPI_results$Variable <- c('Intercept', 'PAPi', 
                                  'Albumin', 'Log Bilirubin+1', 
-                                 'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                 'eGFR', 'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                                  'Log BNP+1, Regular BNP',
                                  'Log BNP+1, NT-proBNP')
 
@@ -1009,7 +1009,7 @@ model_PAPI_noBNP <- glm(formula = as.formula(
   death6week ~ 
     papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -1023,7 +1023,7 @@ model_CPO_PAPI_AST_API <- glm(formula = as.formula(
     cpo + papi + api + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) +
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1040,7 +1040,7 @@ model_CPO_PAPI_AST_API_results <- model_CPO_PAPI_AST_API_results %>%
 model_CPO_PAPI_AST_API_results$Variable <- c('Intercept', 'CPO', 'PAPi', 
                                              'API', 'AST', 'Albumin', 
                                              'Log Bilirubin+1', 'eGFR', 'Sodium', 
-                                             'LVAD', 'Short MCS Ever', 
+                                             'Durable LVAD', 'Short MCS Ever', 
                                              'Log BNP+1, Regular BNP',
                                              'Log BNP+1, NT-proBNP')
 
@@ -1054,7 +1054,7 @@ model_CPO_PAPI_AST_API_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + api + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -1067,7 +1067,7 @@ model_CPO_PAPI_API <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) +
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1085,7 +1085,7 @@ model_CPO_PAPI_API_results$Variable <- c('Intercept',
                                          'CPO', 'PAPi', 'API', 
                                          'Albumin', 'Log Bilirubin+1', 
                                          'eGFR', 'Sodium', 
-                                         'LVAD', 'Short MCS Ever', 
+                                         'Durable LVAD', 'Short MCS Ever', 
                                          'Log BNP+1, Regular BNP',
                                          'Log BNP+1, NT-proBNP')
 
@@ -1098,7 +1098,7 @@ model_CPO_PAPI_API_results %>%
 model_CPO_PAPI_API_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + api + albumin + log(bilirubin + 1) + eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -1112,7 +1112,7 @@ model_CPO_PAPI_AST <- glm(formula = as.formula(
     cpo + papi + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1130,7 +1130,7 @@ model_CPO_PAPI_AST_results$Variable <- c('Intercept',
                                          'CPO', 'PAPi', 'AST', 
                                          'Albumin', 'Log Bilirubin+1', 
                                          'eGFR', 'Sodium',                              
-                                         'LVAD', 'Short MCS Ever', 
+                                         'Durable LVAD', 'Short MCS Ever', 
                                          'Log BNP+1, Regular BNP',
                                          'Log BNP+1, NT-proBNP')
 
@@ -1144,7 +1144,7 @@ model_CPO_PAPI_AST_noBNP <- glm(formula = as.formula(
   death6week ~ 
     cpo + papi + AST + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -1158,7 +1158,7 @@ model_no_hemo <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1173,7 +1173,7 @@ model_no_hemo_results <- model_no_hemo_results %>%
            PValue = round(PValue, 3))
 
 model_no_hemo_results$Variable <- c('Intercept', 'Albumin', 'Log Bilirubin+1', 
-                                    'eGFR', 'Sodium', 'LVAD', 'Short MCS Ever', 
+                                    'eGFR', 'Sodium', 'Durable LVAD', 'Short MCS Ever', 
                                     'Log BNP+1, Regular BNP',
                                     'Log BNP+1, NT-proBNP')
 
@@ -1186,7 +1186,7 @@ model_no_hemo_noBNP <- glm(formula = as.formula(
   death6week ~ 
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -1316,7 +1316,7 @@ model_final <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1333,7 +1333,7 @@ model_final_results <- model_final_results %>%
 model_final_results$Variable <- c('Intercept',  
                                   'Albumin', 'Log Bilirubin+1',
                                   'eGFR', 'Sodium', 
-                                  'LVAD', 'Short MCS Ever',
+                                  'Durable LVAD', 'Short MCS Ever',
                                   'Log BNP+1, Regular BNP',
                                   'Log BNP+1, NT-proBNP')
 
@@ -1355,7 +1355,7 @@ model_final_hemo <- glm(formula = as.formula(
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1372,7 +1372,7 @@ model_final_hemo_results <- model_final_hemo_results %>%
 model_final_hemo_results$Variable <- c('Intercept', 'CPO', 'PAPi',
                                   'Albumin', 'Log Bilirubin+1',
                                   'eGFR', 'Sodium', 
-                                  'LVAD', 'Short MCS Ever',
+                                  'Durable LVAD', 'Short MCS Ever',
                                   'Log BNP+1, Regular BNP',
                                   'Log BNP+1, NT-proBNP')
 
@@ -1700,7 +1700,7 @@ model_final_BP <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever_with_BP_perc), 
+    durable_LVAD + short_MCS_ever_with_BP_perc), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1736,7 +1736,7 @@ model_hemo_BP <- glm(formula = as.formula(
     cpo + papi + albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever_with_BP_perc), 
+    durable_LVAD + short_MCS_ever_with_BP_perc), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 
@@ -1804,10 +1804,10 @@ load('./Models/model_elastic_mem_6wk.RData')
 
 model_elastic_all_results <- data.frame(
   'Variable' = rownames(
-    coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda, model_elastic_all$bestTune$alpha)),
+    coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda, model_elastic_all$bestTune$alpha, exact=F)),
   
   'Estimate' = as.numeric(coef(model_elastic_all$finalModel, model_elastic_all$bestTune$lambda,
-                               model_elastic_all$bestTune$alpha)))
+                               model_elastic_all$bestTune$alpha, exact=F)))
 
 
 model_elastic_all_results[ ,'Estimate'] <- signif(model_elastic_all_results[ ,'Estimate'], 2)
@@ -2008,7 +2008,7 @@ six_up<- vector(mode = "numeric")
 for (i in time_dependent_auc_six %>% pull(interval)) {
   roc_i <- df_intervals_test %>%
     filter(interval == i) %>%
-  roc(death6week, status_initial, direction='>')
+  roc(death6week, status_initial)
   
   roc_ci <- ci.auc(roc_i)
   
@@ -2226,7 +2226,7 @@ cowplot::plot_grid(p1, p2, labels = 'AUTO', scale = 0.9)
 -------------
 
 
-# 9. Create calibration plot in test dataset (Figure 4)
+# 9. Create calibration plot in test dataset (eFigure 3)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 ## Convert first to 50-point medical urgency score
@@ -2335,7 +2335,7 @@ lmtest::coeftest(lm(observed ~ predicted, data = df_intervals_test_calib), vcov=
 -------------
 
 
-# 10. Create facet plot of 50 point score at initial listing (Figure 3)
+# 10. Create facet plot of 50 point score at initial listing (Figure 4)
 
 ```{r, warning=F, message=F, comment=NA, fig.align='center', fig.height=8, fig.width=8}
 df_intervals %>%
@@ -2732,7 +2732,7 @@ df_censor <- df_intervals[df_intervals$PX_ID %in% c(sample_deaths, sample_transp
                             'death6week', 'transplant',
                             'albumin', 'bilirubin',
                             'eGFR', 'sodium', 'BNP',
-                            'LVAD', 'short_MCS_ever')]
+                            'durable_LVAD', 'short_MCS_ever')]
 min_time <- min(df_censor$interval_stop[df_censor$last_group == '1' & df_censor$transplant == '1'])
 df_censor$transplant_death <- 'Transplant'
 df_censor$transplant_death[df_censor$PX_ID %in% sample_deaths] <- 'Death'
@@ -2763,7 +2763,7 @@ glmer(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever + (1 | CenterId)), 
+    durable_LVAD + short_MCS_ever + (1 | CenterId)), 
   data = df_intervals[df_intervals$train_test == 'Train',],
   family = binomial)
 ```
@@ -2796,8 +2796,8 @@ pROC::ci.coords(french_auc, x=0.908, input='sensitivity')
 
 pROC::ci.coords(french_auc, x=0.949, input='specificity')
 pROC::ci.coords(french_auc, x=0.680, input='specificity')
-pROC::ci.coords(french_auc, x=0.576, input='specificity')
-pROC::ci.coords(french_auc, x=0.192, input='specificity')
+pROC::ci.coords(french_auc, x=0.562, input='specificity')
+pROC::ci.coords(french_auc, x=0.180, input='specificity')
 pROC::ci.coords(french_auc, x=0.152, input='specificity')
 
 
@@ -2809,8 +2809,8 @@ pROC::ci.coords(us_auc, x=0.908, input='sensitivity')
 
 pROC::ci.coords(us_auc, x=0.949, input='specificity')
 pROC::ci.coords(us_auc, x=0.680, input='specificity')
-pROC::ci.coords(us_auc, x=0.576, input='specificity')
-pROC::ci.coords(us_auc, x=0.192, input='specificity')
+pROC::ci.coords(us_auc, x=0.562, input='specificity')
+pROC::ci.coords(us_auc, x=0.180, input='specificity')
 pROC::ci.coords(us_auc, x=0.152, input='specificity')
 ```
 
@@ -2844,7 +2844,7 @@ model_final_temporal <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals_train, 
   family = binomial)
 
@@ -2919,7 +2919,7 @@ model_final_2week <- glm(formula = as.formula(
     albumin + log(bilirubin + 1) + 
     eGFR + sodium + 
     (log(BNP + 1):BNP_NT_Pro) + 
-    LVAD + short_MCS_ever), 
+    durable_LVAD + short_MCS_ever), 
   data = df_intervals[df_intervals$train_test == 'Train',], 
   family = binomial)
 ```
@@ -2946,8 +2946,8 @@ df_coefplot$six_est[df_coefplot$var == 'sodium'] <-
   summary(model_final)$coefficients['sodium', 'Estimate']
 df_coefplot$six_est[df_coefplot$var == 'albumin'] <- 
   summary(model_final)$coefficients['albumin', 'Estimate']
-df_coefplot$six_est[df_coefplot$var == 'LVAD1'] <- 
-  summary(model_final)$coefficients['LVAD1', 'Estimate']
+df_coefplot$six_est[df_coefplot$var == 'durable_LVAD1'] <- 
+  summary(model_final)$coefficients['durable_LVAD1', 'Estimate']
 df_coefplot$six_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
   summary(model_final)$coefficients['log(BNP + 1):BNP_NT_Pro0', 'Estimate']
 df_coefplot$six_est[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
@@ -2965,8 +2965,8 @@ df_coefplot$six_stderr[df_coefplot$var == 'sodium'] <-
   df_coefplot2$us_stderr[df_coefplot2$var == 'sodium']
 df_coefplot$six_stderr[df_coefplot$var == 'albumin'] <- 
   df_coefplot2$us_stderr[df_coefplot2$var == 'albumin']
-df_coefplot$six_stderr[df_coefplot$var == 'LVAD1'] <- 
-   df_coefplot2$us_stderr[df_coefplot2$var == 'LVAD1']
+df_coefplot$six_stderr[df_coefplot$var == 'durable_LVAD1'] <- 
+   df_coefplot2$us_stderr[df_coefplot2$var == 'durable_LVAD1']
 df_coefplot$six_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro0'] <- 
   df_coefplot2$us_stderr[df_coefplot2$var == 'log(BNP + 1):BNP_NT_Pro0']
 df_coefplot$six_stderr[df_coefplot$var == 'log(BNP + 1):BNP_NT_Pro1'] <- 
