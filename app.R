@@ -59,7 +59,7 @@ ui <- fluidPage(
 )
 
 
-load('model_final2.RData')
+load('model_final.RData')
 
 server <- function(input, output) {
   
